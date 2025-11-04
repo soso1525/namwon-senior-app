@@ -1,3 +1,3 @@
-# LemonDemo_Android
+# 남원 E 케어 경로당 어르신 앱
 
-LemonDemo_Android
+남원 E 케어 경로당 어르신 앱
