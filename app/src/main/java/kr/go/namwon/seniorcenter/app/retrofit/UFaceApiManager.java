@@ -1,4 +1,4 @@
-package com.metsakuur.lemondemo.retrofit;
+package kr.go.namwon.seniorcenter.app.retrofit;
 
 import retrofit2.Callback;
 import retrofit2.Call;

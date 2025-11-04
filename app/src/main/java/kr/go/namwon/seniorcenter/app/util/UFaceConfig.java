@@ -1,5 +1,4 @@
-package com.metsakuur.lemondemo.util;
-
+package kr.go.namwon.seniorcenter.app.util;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.provider.Settings;

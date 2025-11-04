@@ -1,10 +1,10 @@
-package com.metsakuur.lemondemo;
-
+package kr.go.namwon.seniorcenter.app;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
-import com.metsakuur.lemondemo.databinding.ActivityMainBinding;
-import com.metsakuur.lemondemo.util.BaseAppCompatActivity;
+
+import kr.go.namwon.seniorcenter.app.databinding.ActivityMainBinding;
+import kr.go.namwon.seniorcenter.app.util.BaseAppCompatActivity;
 
 public class MainActivity extends BaseAppCompatActivity {
 

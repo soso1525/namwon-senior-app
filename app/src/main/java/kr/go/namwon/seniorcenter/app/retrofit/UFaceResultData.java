@@ -1,4 +1,4 @@
-package com.metsakuur.lemondemo.retrofit;
+package kr.go.namwon.seniorcenter.app.retrofit;
 
 public class UFaceResultData {
     private String code;

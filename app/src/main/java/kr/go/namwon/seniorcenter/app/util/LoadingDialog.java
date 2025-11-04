@@ -1,11 +1,10 @@
-package com.metsakuur.lemondemo.util;
-
+package kr.go.namwon.seniorcenter.app.util;
 import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
-import com.metsakuur.lemondemo.R;
+import kr.go.namwon.seniorcenter.app.R;
 
 public class LoadingDialog extends Dialog {
 

@@ -1,11 +1,11 @@
-package com.metsakuur.lemondemo;
+package kr.go.namwon.seniorcenter.app;
 
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 
-import com.metsakuur.lemondemo.databinding.ActivityCameraNoticeBinding;
-import com.metsakuur.lemondemo.util.BaseAppCompatActivity;
+import kr.go.namwon.seniorcenter.app.databinding.ActivityCameraNoticeBinding;
+import kr.go.namwon.seniorcenter.app.util.BaseAppCompatActivity;
 
 public class CameraNoticeActivity extends BaseAppCompatActivity {
 
@@ -28,7 +28,7 @@ public class CameraNoticeActivity extends BaseAppCompatActivity {
         binding.btnNext.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(getBaseContext(), CameraActivity.class);
+                Intent intent = new Intent(getBaseContext(), LoginActivity.class);
                 startActivity(intent);
             }
         });

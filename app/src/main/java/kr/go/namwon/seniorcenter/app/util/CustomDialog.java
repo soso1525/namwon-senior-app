@@ -1,4 +1,4 @@
-package com.metsakuur.lemondemo.util;
+package kr.go.namwon.seniorcenter.app.util;
 
 import android.app.Dialog;
 import android.content.Context;
@@ -9,7 +9,7 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 
-import com.metsakuur.lemondemo.databinding.DialogCustomBinding;
+import kr.go.namwon.seniorcenter.app.databinding.DialogCustomBinding;
 
 public class CustomDialog extends Dialog {
 

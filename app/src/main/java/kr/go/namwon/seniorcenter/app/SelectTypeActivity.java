@@ -1,5 +1,4 @@
-package com.metsakuur.lemondemo;
-
+package kr.go.namwon.seniorcenter.app;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.ImageDecoder;
@@ -11,15 +10,17 @@ import android.util.Log;
 import android.view.View;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import com.metsakuur.lemondemo.databinding.ActivitySelectTypeBinding;
-import com.metsakuur.lemondemo.util.BaseAppCompatActivity;
-import com.metsakuur.lemondemo.util.UFaceConfig;
 import com.metsakuur.ufacedetector.util.UFaceBitmapUtils;
 
 import android.widget.RadioGroup;
 
 import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
+
+import kr.go.namwon.seniorcenter.app.databinding.ActivitySelectTypeBinding;
+import kr.go.namwon.seniorcenter.app.util.BaseAppCompatActivity;
+import kr.go.namwon.seniorcenter.app.util.UFaceConfig;
+
 public class SelectTypeActivity extends BaseAppCompatActivity {
 
     private ActivitySelectTypeBinding binding;

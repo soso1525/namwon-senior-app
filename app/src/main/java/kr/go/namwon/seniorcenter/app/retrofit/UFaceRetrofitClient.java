@@ -1,11 +1,11 @@
-package com.metsakuur.lemondemo.retrofit;
+package kr.go.namwon.seniorcenter.app.retrofit;
 
 
 import com.google.gson.GsonBuilder;
-import com.metsakuur.lemondemo.util.UFaceConfig;
 
 import java.util.concurrent.TimeUnit;
 
+import kr.go.namwon.seniorcenter.app.util.UFaceConfig;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;

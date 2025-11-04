@@ -1,4 +1,4 @@
-package com.metsakuur.lemondemo;
+package kr.go.namwon.seniorcenter.app;
 
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -6,7 +6,8 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.LayoutInflater;
 import androidx.constraintlayout.widget.ConstraintLayout;
-import com.metsakuur.lemondemo.databinding.CommonHeaderBinding;
+
+import kr.go.namwon.seniorcenter.app.databinding.CommonHeaderBinding;
 
 public class CommonHeader extends ConstraintLayout {
 

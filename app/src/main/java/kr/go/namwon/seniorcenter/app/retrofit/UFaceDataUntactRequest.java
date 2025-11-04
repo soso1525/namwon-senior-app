@@ -1,4 +1,4 @@
-package com.metsakuur.lemondemo.retrofit;
+package kr.go.namwon.seniorcenter.app.retrofit;
 
 public class UFaceDataUntactRequest {
     private String uuid;

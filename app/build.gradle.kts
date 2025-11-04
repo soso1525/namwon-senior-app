@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.metsakuur.lemondemo"
+    namespace = "kr.go.namwon.seniorcenter.app"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.metsakuur.lemondemo"
+        applicationId = "kr.go.namwon.seniorcenter.app"
         minSdk = 23
         targetSdk = 34
         versionCode = 1

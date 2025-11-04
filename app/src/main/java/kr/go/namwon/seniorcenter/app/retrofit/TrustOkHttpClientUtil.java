@@ -1,4 +1,4 @@
-package com.metsakuur.lemondemo.retrofit;
+package kr.go.namwon.seniorcenter.app.retrofit;
 
 import okhttp3.OkHttpClient;
 

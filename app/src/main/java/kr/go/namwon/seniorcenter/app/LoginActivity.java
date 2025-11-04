@@ -1,18 +1,10 @@
-package com.metsakuur.lemondemo;
-
+package kr.go.namwon.seniorcenter.app;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import androidx.annotation.NonNull;
-import com.metsakuur.lemondemo.databinding.ActivityCameraBinding;
-import com.metsakuur.lemondemo.retrofit.UFaceApiManager;
-import com.metsakuur.lemondemo.retrofit.UFaceDataUntactRequest;
-import com.metsakuur.lemondemo.retrofit.UFaceResultData;
-import com.metsakuur.lemondemo.util.BaseAppCompatActivity;
-import com.metsakuur.lemondemo.util.LoadingDialog;
-import com.metsakuur.lemondemo.util.UFaceConfig;
 import com.metsakuur.ufacedetector.UFaceDetector;
 import com.metsakuur.ufacedetector.UFaceDetectorListener;
 import com.metsakuur.ufacedetector.model.UFaceError;
@@ -23,14 +15,22 @@ import com.metsakuur.ufacedetector.model.UFaceStateModel;
 import com.metsakuur.ufacedetector.util.UFaceBitmapUtils;
 import com.metsakuur.ufacetotpclient.UFaceTotpClient;
 import java.util.Random;
+
+import kr.go.namwon.seniorcenter.app.databinding.ActivityLoginBinding;
+import kr.go.namwon.seniorcenter.app.retrofit.UFaceApiManager;
+import kr.go.namwon.seniorcenter.app.retrofit.UFaceDataUntactRequest;
+import kr.go.namwon.seniorcenter.app.retrofit.UFaceResultData;
+import kr.go.namwon.seniorcenter.app.util.BaseAppCompatActivity;
+import kr.go.namwon.seniorcenter.app.util.LoadingDialog;
+import kr.go.namwon.seniorcenter.app.util.UFaceConfig;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class CameraActivity extends BaseAppCompatActivity implements UFaceDetectorListener {
-    public static final String TAG = "TAG_CameraActivity";
+public class LoginActivity extends BaseAppCompatActivity implements UFaceDetectorListener {
+    public static final String TAG = "TAG_LoginActivity";
 
-    private ActivityCameraBinding binding;
+    private ActivityLoginBinding binding;
 
     private LoadingDialog loadingDialog;
 
@@ -59,11 +59,11 @@ public class CameraActivity extends BaseAppCompatActivity implements UFaceDetect
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        binding = ActivityCameraBinding.inflate(getLayoutInflater());
+        binding = ActivityLoginBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
         // 로딩바 초기화
-        loadingDialog = new LoadingDialog(CameraActivity.this);
+        loadingDialog = new LoadingDialog(LoginActivity.this);
 
         // 설정 화면 환경변수 세팅
         // 눈깜빡임 체크 활성화 여부
@@ -110,7 +110,7 @@ public class CameraActivity extends BaseAppCompatActivity implements UFaceDetect
         uFaceDetector.setUseEyeBlink(true);
 
         // 디텍터 초기화
-        uFaceDetector.initDetector(this, "4F5A465276310081D4E821C20667AFC25185AB32A55A34110F5D7A927FD24F5DCECADF08C38D5B980C243C6D72724708F69129EA19EAB0B7");
+        uFaceDetector.initDetector(this, "4F5A46527631008115020932123D9CB2313497831B23111BC957CED78F1C6F8731D6A7BEB6ED3B588CC9063F0D6AA09471BDFA61207FF2A0");
     }
 
     /**

@@ -1,4 +1,4 @@
-package com.metsakuur.lemondemo.util;
+package kr.go.namwon.seniorcenter.app.util;
 
 import android.os.Bundle;
 import androidx.annotation.Nullable;

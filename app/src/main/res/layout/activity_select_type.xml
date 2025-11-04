@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <com.metsakuur.lemondemo.CommonHeader
+    <kr.go.namwon.seniorcenter.app.CommonHeader
         android:id="@+id/customHeader"
         android:layout_width="match_parent"
         android:layout_height="60dp"
@@ -35,19 +35,19 @@
             android:layout_marginTop="40dp"
             android:orientation="vertical">
 
-            <com.metsakuur.lemondemo.CustomRadioButton
+            <kr.go.namwon.seniorcenter.app.CustomRadioButton
                 android:id="@+id/rbNId"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:background="@drawable/select_list"
                 android:button="@drawable/ic_idcard"
-                android:text="주민등록증"
                 android:checked="true"
+                android:text="주민등록증"
                 android:textColor="@color/font_black"
                 android:textSize="16dp" />
 
-            <com.metsakuur.lemondemo.CustomRadioButton
+            <kr.go.namwon.seniorcenter.app.CustomRadioButton
                 android:id="@+id/rbDid"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -59,7 +59,7 @@
                 android:textColor="@color/font_black"
                 android:textSize="16dp" />
 
-            <com.metsakuur.lemondemo.CustomRadioButton
+            <kr.go.namwon.seniorcenter.app.CustomRadioButton
                 android:id="@+id/rbPassport"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
