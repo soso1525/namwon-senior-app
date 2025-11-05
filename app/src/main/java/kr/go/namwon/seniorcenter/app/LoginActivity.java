@@ -1,10 +1,10 @@
 package kr.go.namwon.seniorcenter.app;
-import android.content.Intent;
-import android.graphics.Bitmap;
+
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import androidx.annotation.NonNull;
+import android.widget.Toast;
+
+import com.google.gson.JsonObject;
 import com.metsakuur.ufacedetector.UFaceDetector;
 import com.metsakuur.ufacedetector.UFaceDetectorListener;
 import com.metsakuur.ufacedetector.model.UFaceError;
@@ -12,17 +12,14 @@ import com.metsakuur.ufacedetector.model.UFaceGeometryModel;
 import com.metsakuur.ufacedetector.model.UFaceProcessingMode;
 import com.metsakuur.ufacedetector.model.UFaceResult;
 import com.metsakuur.ufacedetector.model.UFaceStateModel;
-import com.metsakuur.ufacedetector.util.UFaceBitmapUtils;
-import com.metsakuur.ufacetotpclient.UFaceTotpClient;
-import java.util.Random;
 
 import kr.go.namwon.seniorcenter.app.databinding.ActivityLoginBinding;
-import kr.go.namwon.seniorcenter.app.retrofit.UFaceApiManager;
-import kr.go.namwon.seniorcenter.app.retrofit.UFaceDataUntactRequest;
-import kr.go.namwon.seniorcenter.app.retrofit.UFaceResultData;
+import kr.go.namwon.seniorcenter.app.model.FaceVerifyRequest;
+import kr.go.namwon.seniorcenter.app.retrofit.ApiClient;
 import kr.go.namwon.seniorcenter.app.util.BaseAppCompatActivity;
+import kr.go.namwon.seniorcenter.app.util.ImageUtil;
 import kr.go.namwon.seniorcenter.app.util.LoadingDialog;
-import kr.go.namwon.seniorcenter.app.util.UFaceConfig;
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -37,24 +34,15 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     // 얼굴 검출기 UFaceDetector
     private UFaceDetector uFaceDetector = null;
 
-    // 설정화면 -> 눈깜빡임 검출 활성화 여부
+    // 눈깜빡임 검출 활성화 여부
     Boolean isEyeBlinkEnabled = false;
 
     // 눈깜빡임 통과 여부, 기본값 성공 및 통과
-    Boolean isEyeBlink= true;
-
-    // 고개돌림 체크 방향
-    int nowDirection = 0;
-    Random random;
-
-    // 현재 고개돌림 성공 횟수
-    int direction_count = 0;
-
-    // 고개돌림 체크 횟수, 기본값 비활성화 = 0
-    int DIRECTION_MAX = 0;
+    Boolean isEyeBlink = true;
 
     // 좌우 고개돌림 체크 완료
-    boolean isYawFinish = false;
+    boolean isYawFinish = true;
+    UFaceResult result = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,53 +50,71 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
         binding = ActivityLoginBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // 로딩바 초기화
+        binding.faceAuthBtn.setOnClickListener(view -> {
+            if (result == null) {
+                Toast.makeText(getApplicationContext(), getString(R.string.empty_face_result), Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            loadingDialog.show();
+            binding.faceAuthBtn.setEnabled(false);
+
+            FaceVerifyRequest request = new FaceVerifyRequest(ImageUtil.bitmapToBase64(result.getFullImage()));
+            ApiClient.authApi()
+                    .verify(request)
+                    .enqueue(new Callback<JsonObject>() {
+                        @Override
+                        public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
+                            loadingDialog.dismiss();
+                            binding.faceAuthBtn.setEnabled(true);
+
+                            if (response.isSuccessful()) {
+                                JsonObject res = response.body();
+                                if (res != null) {
+                                    String accessToken = res.get("bizportal-access-token").getAsString();
+                                    String refreshToken = res.get("bizportal-refresh-token").getAsString();
+                                    String memberId = res.get("mdtlMbrId").getAsString();
+
+                                } else {
+                                    Log.e(TAG, "Response body is null");
+                                }
+                            } else {
+                                if (response.code() == 404) {
+                                    openAlertView(getString(R.string.unregistered_user), (dialogInterface, i) -> dialogInterface.dismiss());
+                                }
+
+                                try (ResponseBody errorBody = response.errorBody()) {
+                                    String err = errorBody != null ? errorBody.string() : "null";
+                                    Log.e(TAG, "Server error " + response.code() + ": " + err);
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Read errorBody failed", e);
+                                }
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Call<JsonObject> call, Throwable t) {
+                            loadingDialog.dismiss();
+                            Log.e(TAG, "Network failure: " + t.getMessage(), t);
+                        }
+                    });
+        });
+
+
         loadingDialog = new LoadingDialog(LoginActivity.this);
-
-        // 설정 화면 환경변수 세팅
-        // 눈깜빡임 체크 활성화 여부
-        isEyeBlinkEnabled = getSharedPreferences(UFaceConfig.SHARED_NAME, MODE_PRIVATE).getBoolean(UFaceConfig.FACE_EYE_BLINK_ENABLED, false);
-        // 고개 돌림 체크 활성화 여부
-        boolean isYawRollEnabled = getSharedPreferences(UFaceConfig.SHARED_NAME, MODE_PRIVATE).getBoolean(UFaceConfig.FACE_YAWROLL_ENABLED, false);
-//        Log.d(TAG, "blinkCheck = ${isEyeBlinkEnabled}, yawRollCheck = ${isYawRollEnabled}");
-
-        // 깜빡임 검출 여부 사용 시, 깜빡임 검출을 위해 isEyeBlink false 로 세팅 (기본값 통과 = true)
-        if(isEyeBlinkEnabled) isEyeBlink = false;
-
-        // 고개 좌우 돌림 사용 시, 고개 돌림 카운트 세팅, 기본값 0 = 사용안함
-        if(isYawRollEnabled) DIRECTION_MAX = 3;
-
-        // 디렉터 초기화 호출
         initDetector();
     }
 
-    /**
-     * 디텍터 초기화.
-     */
     private void initDetector() {
-        random = new Random();
 
         // 디렉터 초기화
         uFaceDetector = new UFaceDetector();
-
-        // 고개 돌림 사용 여부, 0 = 사용 안함
-        if (DIRECTION_MAX == 0) {
-            isYawFinish = true;
-        } else {
-            isYawFinish = false;
-        }
-
-        // 고개 돌림 횟수 초기화
-        direction_count = 0;
-        getDirection();
-
         // 카메라 프리뷰 세팅
         uFaceDetector.setPreviewView(binding.previewView);
         // 디텍터 리스너 세팅
         uFaceDetector.setFaceDetectorListener(this);
         // 눈깜빡임 사용 여부
         uFaceDetector.setUseEyeBlink(true);
-
         // 디텍터 초기화
         uFaceDetector.initDetector(this, "4F5A46527631008115020932123D9CB2313497831B23111BC957CED78F1C6F8731D6A7BEB6ED3B588CC9063F0D6AA09471BDFA61207FF2A0");
     }
@@ -117,121 +123,17 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
      * 뷰 초기화
      */
     void initView() {
-        if(uFaceDetector == null) return;
+        if (uFaceDetector == null) return;
 
         uFaceDetector.resumeDetector();
-
-        // 고개 돌림 사용 여부, 기본값 0 = 사용 안함
-        if (DIRECTION_MAX == 0) {
-            isYawFinish = true;
-        } else {
-            isYawFinish = false;
-        }
-
-        // 눈 깜빡임 & 고개 돌림 뷰 유효성 검사
-        validateViewCondition();
-
-        // 고개 돌림 횟수 초기화
-        direction_count = 0;
-        // 고개 돌림 방향 랜덤 생성
-        getDirection();
-
-        // 바인딩 뷰 초기화
         binding.tvCameraText.setText(getString(R.string.camera_front));
-        binding.ivFront.setImageResource(R.drawable.front_off);
-        binding.ivLeft.setImageResource(R.drawable.left_off);
-        binding.ivRight.setImageResource(R.drawable.right_off);
-    }
-
-    void validateViewCondition() {
-
-        // 데모 시나리오 = 눈깜빡임 성공 이후 고개 돌림 체크
-        // 눈깜빡임 성공 or 눈깜빡임 비활성화시 bypass (기본값 = true) -> 고개 돌림 뷰 유효성 검사
-        if(isEyeBlink) {
-            // 고개 돌림 성공 여부, 뷰 유효성 검사 (비활성화 시 기본값 = true)
-            if(isYawFinish) {
-                binding.layoutYaw.setVisibility(View.GONE);
-            } else {
-                binding.layoutYaw.setVisibility(View.VISIBLE);
-            }
-        } else {
-            binding.layoutYaw.setVisibility(View.GONE);
-        }
-    }
-
-    // 고개 돌림 방향 랜덤 생성
-    void getDirection() {
-        nowDirection = random.nextInt(2);
-    }
-
-    // 고개 돌림 시나리오 수행
-    public void detectPitchYawRoll(float pitch, float yaw, float roll, @NonNull Bitmap bitmap) {
-        Float ufaceYaw = yaw;
-
-        // 고개 돌림 체크
-        // 데모앱 시나리오 얼굴 좌우 돌림 사용 (특정 방향으로 이동 후 다시 중앙으로 돌어오는게 한 사이클)
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                // 0 = 왼쪽
-                if (nowDirection == 0) {
-                    binding.tvCameraText.setText(getString(R.string.camera_turn));
-                    binding.ivFront.setImageResource(R.drawable.front_off);
-                    binding.ivLeft.setImageResource(R.drawable.left_on);
-                    binding.ivRight.setImageResource(R.drawable.right_off);
-                    if (ufaceYaw != null) {
-                        if (ufaceYaw < -20) {
-                            nowDirection = 2;
-                        }
-                    }
-                }
-
-                // 1 = 오른쪽
-                else if (nowDirection == 1) {
-                    binding.tvCameraText.setText(getString(R.string.camera_turn));
-                    binding.ivFront.setImageResource(R.drawable.front_off);
-                    binding.ivLeft.setImageResource(R.drawable.left_off);
-                    binding.ivRight.setImageResource(R.drawable.right_on);
-                    if (ufaceYaw != null) {
-                        if (ufaceYaw > 20) {
-                            nowDirection = 2;
-                        }
-                    }
-                }
-
-                // 2 = 중앙
-                else if (nowDirection == 2) {
-                    binding.tvCameraText.setText(getString(R.string.camera_front));
-                    binding.ivFront.setImageResource(R.drawable.front_on);
-                    binding.ivLeft.setImageResource(R.drawable.left_off);
-                    binding.ivRight.setImageResource(R.drawable.right_off);
-
-                    int absoluteValue = (int) Math.abs(ufaceYaw);
-                    if (absoluteValue < 10) {
-
-                        // 고개 돌림 한 사이클 성공, 성공 카운트 증가
-                        direction_count++;
-                        if (direction_count >= DIRECTION_MAX) {
-                            isYawFinish = true;
-                            // 고개돌림 모두 완료, 얼굴 검출 결과값 수신 하도록 변경
-                            // *** processingMode 가 DEFAULT_MODE 여야 uFaceDetector result 리스너 결과값이 수신 됨 ***
-                            uFaceDetector.setProcessingMode(UFaceProcessingMode.DEFAULT_MODE);
-                        } else {
-                            getDirection();
-                        }
-                    } else {
-
-                    }
-                }
-            }
-        });
     }
 
     // 얼굴 검출 UI 업데이트
     public void isDetectFace(Boolean isDetectFace) {
         if (isDetectFace) {
             binding.tvCameraText.setText(getString(R.string.camera_front));
-            if(!isEyeBlink) {
+            if (!isEyeBlink) {
                 binding.tvCameraText.setText(getString(R.string.camera_eye_blink));
             }
             binding.ivGuide.setImageResource(R.drawable.face_guide_green);
@@ -241,24 +143,10 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
         }
     }
 
-
-    /**
-     * ----------------------
-     * UFaceDetector Listener
-     * ----------------------
-     */
-
-    /**
-     * 카메라 세팅 정상 완료 후 호출
-     * 타이머가 필요할 경우 여기서 시작
-     */
     @Override
     public void uFaceDetectorSetCameraSessionComplete() {
     }
 
-    /**
-     * 얼굴 검출 상태(ex: 얼굴 검출 여부, 블러 상태, etc)를 수신하는
-     */
     @Override
     public void uFaceDetector(UFaceDetector detector, UFaceStateModel faceState) {
         switch (faceState.getState()) {
@@ -271,30 +159,35 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
 
             case UFACE_STATE_FACE_NOT_DETECTED:
                 isDetectFace(false);
+                this.result = null;
                 break;
 
             /**
              * 얼굴이 너무 멀리있을 때 호출
              */
             case UFACE_STATE_FACE_SMALL:
-                binding.tvCameraText.setText("조금 가까이 얼굴을 보여주세요.");
+                binding.tvCameraText.setText(getString(R.string.face_too_far));
+                this.result = null;
                 break;
 
             /**
              * 얼굴이 너무 가까울 때 호출
              */
             case UFACE_STATE_FACE_LARGE:
-                binding.tvCameraText.setText("조금 멀리 얼굴을 보여주세요.");
+                binding.tvCameraText.setText(getString(R.string.face_too_close));
+                this.result = null;
                 break;
 
             /**
              * Blur 감지 되었을 때 호출
              */
             case UFACE_STATE_FACE_BLUR:
-                binding.tvCameraText.setText("카메라를 정면으로 비추고 너무 어둡거나 역광이 있는 곳을 피해 주세요.\n전면 카메라 렌즈를 깨끗이 닦아주세요.");
+                binding.tvCameraText.setText(getString(R.string.face_unclear));
+                this.result = null;
                 break;
 
             default:
+                this.result = null;
                 break;
 
         }
@@ -312,19 +205,6 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
      */
     @Override
     public void uFaceDetector(UFaceDetector detector, UFaceGeometryModel faceGeometry) {
-
-        // 고개돌림 시나리오 수행 여부 상태값 체크
-        if (!isEyeBlink || isYawFinish) {
-            return;
-        }
-
-        Float pitch = faceGeometry.getPitch();
-        Float yaw = faceGeometry.getYaw();
-        Float roll = faceGeometry.getRoll();
-        Bitmap bitmap = faceGeometry.getFullImage();
-
-        // 수신받은 pitch, yaw, roll 값으로 고개 돌림 시나리오 수행
-        detectPitchYawRoll(pitch, yaw, roll, bitmap);
     }
 
     /**
@@ -358,17 +238,13 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
         // result.isEyeBlinked = 눈깜빡임 성공 여부
         // 환경 변수 조건은 데모앱 시나리오(isEyeBlinkEnabled)
         // 눈깜빡임 여부는 result.isEyeBlinked 로 체크 가능
-        if(!isEyeBlinkEnabled || result.isEyeBlinked()) {
+        if (!isEyeBlinkEnabled || result.isEyeBlinked()) {
             // 눈깜빡임 체크 성공
             isEyeBlink = true;
-            validateViewCondition();
 
             // 고개 돌림 성공 체크 (사용 안할 시 true가 기본값이므로 통과)
             if (isYawFinish) {
-                loadingDialog.show();
-
-                // 선행 조건 통과 이후 최종 서버 통신 프로세스 진행
-                requestUntact(result);
+                this.result = result;
             } else {
                 // 해당 리스너로 결과괎이 수신되면 디텍터가 검출을 멈추기 때문에 resumeDetector를 호출해야 디텍터가 다시 동작 함
                 // 고개 돌림 아직 진행 중이므로, 고개 돌림 프로세스 다시 진행하도록 processingMode.GEOMETRY_MODE 로 변경
@@ -376,228 +252,40 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                 uFaceDetector.resumeDetector();
             }
 
-
-        } else {
-            Log.d(TAG, "눈을 깜빡여 주세요.");
-            uFaceDetector.resumeDetector();
         }
     }
 
-
-    private void requestUntact(UFaceResult result) {
-        loadingDialog.show();
-        String uuid = UFaceConfig.getUUID(getBaseContext());
-        Bitmap resultImg = result.getFullImage();
-
-        // 서버 전송을 위한 이미지 변환(암호화 및 이미지 변환)
-        String dataImg = UFaceTotpClient.INSTANCE.getEncryptedImage(uuid, UFaceTotpClient.TAG_TYPE_IMAGE, UFaceBitmapUtils.jpegData(resultImg, 90));
-
-        // 서버 통신 예시 (API 목록은 서버 API 가이드 문서 확인)
-        if(dataImg != null ) {
-            if(UFaceConfig.getInstance().getPictureByteArray() != null) {
-                byte[] idImg = UFaceConfig.getInstance().getPictureByteArray();
-
-                UFaceApiManager.requestUntactApi(
-                        new UFaceDataUntactRequest(
-                                uuid,
-                                UFaceConfig.getInstance().getIdKey(),
-                                UFaceConfig.osType,
-                                UFaceConfig.getInstance().getUntactType(),
-                                "LI",
-                                dataImg,
-                                UFaceTotpClient.INSTANCE.getEncryptedImage(
-                                        uuid,
-                                        UFaceTotpClient.TAG_TYPE_IDIMAGE,
-                                        idImg
-                                ),
-                                UFaceConfig.channel
-                        ), new Callback<UFaceResultData>() {
-                            @Override
-                            public void onResponse(Call<UFaceResultData> call, Response<UFaceResultData> response) {
-                                String code = response.body().getCode();
-                                if (loadingDialog.isShowing()) {
-                                    loadingDialog.dismiss();
-                                }
-                                if (code.equals("OK")) {
-                                    Intent intent = new Intent(getBaseContext(), CompleteActivity.class);
-                                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                    startActivity(intent);
-                                } else {
-                                    String errorCode = response.body().getezResponse().getResp_code();
-                                    if (errorCode != null) {
-                                        switch (errorCode) {
-                                            case "20033":
-                                            case "20034":
-                                            case "20035":
-                                            case "20036": {
-                                                openAlertView(
-                                                        "신분증 얼굴과 불일치합니다.\n다시 시도해주세요.",
-                                                        "오류코드 : " + errorCode,
-                                                        "종료",
-                                                        (dialog, which) -> {
-                                                            Intent intent =
-                                                                    new Intent(getBaseContext(), MainActivity.class);
-                                                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                            startActivity(intent);
-                                                        },
-                                                        "재시도",
-                                                        (dialog, which) -> {
-                                                            initView();
-                                                            dialog.dismiss();
-                                                        });
-                                                break;
-                                            }
-
-                                            case "20004":
-                                            case "20014": {
-                                                openAlertView(
-                                                        "스푸핑이 감지되었습니다.\n다시 시도해주세요.",
-                                                        "오류코드 : " + errorCode,
-                                                        "종료",
-                                                        (dialog, which) -> {
-                                                            Intent intent = new
-                                                                    Intent(getBaseContext(), MainActivity.class);
-                                                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                            startActivity(intent);
-                                                        },
-                                                        "재시도",
-                                                        (dialog, which) -> {
-                                                            initView();
-                                                            dialog.dismiss();
-                                                        });
-                                                break;
-                                            }
-
-                                            case "20007": {
-                                                openAlertView(
-                                                        "선글라스를 벗어주세요.",
-                                                        "오류코드 : " + errorCode,
-                                                        "종료",
-                                                        (dialog, which) -> {
-                                                            Intent intent = new Intent(getBaseContext(), MainActivity.class);
-                                                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                            startActivity(intent);
-                                                        },
-                                                        "재시도",
-                                                        (dialog, which) -> {
-                                                            initView();
-                                                            dialog.dismiss();
-                                                        });
-                                                break;
-                                            }
-
-                                            case "20008": {
-                                                openAlertView(
-                                                        "마스크를 벗어주세요.",
-                                                        "오류코드 : " + errorCode,
-                                                        "종료",
-                                                        (dialog, which) -> {
-                                                            Intent intent = new Intent(getBaseContext(), MainActivity.class);
-                                                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                            startActivity(intent);
-                                                        },
-                                                        "재시도",
-                                                        (dialog, which) -> {
-                                                            initView();
-                                                            dialog.dismiss();
-                                                        });
-                                                break;
-                                            }
-
-                                            case "20015": {
-                                                openAlertView(
-                                                        "눈을 크게 떠주세요.",
-                                                        "오류코드 : " + errorCode,
-                                                        "종료",
-                                                        (dialog, which) -> {
-                                                            Intent intent = new Intent(getBaseContext(), MainActivity.class);
-                                                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                            startActivity(intent);
-                                                        },
-                                                        "재시도",
-                                                        (dialog, which) -> {
-                                                            initView();
-                                                            dialog.dismiss();
-                                                        });
-                                                break;
-                                            }
-
-                                            case "40000":
-                                            case "40001": {
-                                                openAlertView(
-                                                        "얼굴이 검출되지 않았습니다.\n다시 시도해주세요.",
-                                                        "오류코드 : " + errorCode,
-                                                        "종료",
-                                                        (dialog, which) -> {
-                                                            Intent intent = new Intent(getBaseContext(), MainActivity.class);
-                                                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                            startActivity(intent);
-                                                        },
-                                                        "재시도",
-                                                        (dialog, which) -> {
-                                                            initView();
-                                                            dialog.dismiss();
-                                                        });
-                                                break;
-                                            }
-
-                                            default: {
-                                                openAlertView(
-                                                        "얼굴 비교 검증에 실패했습니다.\n다시 시도해주세요.",
-                                                        "오류코드 : " + errorCode,
-                                                        "종료",
-                                                        (dialog, which) -> {
-                                                            Intent intent = new Intent(getBaseContext(), MainActivity.class);
-                                                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                                            startActivity(intent);
-                                                        },
-                                                        "재시도",
-                                                        (dialog, which) -> {
-                                                            initView();
-                                                            dialog.dismiss();
-                                                        });
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            @Override
-                            public void onFailure(Call<UFaceResultData> call, Throwable t) {
-                                loadingDialog.dismiss();
-                                openAlertView("onFailure : " + t.getMessage(),  (dialog, which ) -> { finish(); });
-                            }
-                        }
-                );
-            }
-        }
-    }
-
-    @Override protected void onStop() {
+    @Override
+    protected void onStop() {
         super.onStop();
-        if(uFaceDetector != null) {
+        this.result = null;
+
+        if (uFaceDetector != null) {
             uFaceDetector.pauseDetector();
         }
     }
 
-    @Override protected void onStart() {
+    @Override
+    protected void onStart() {
         super.onStart();
         initView();
     }
 
-    @Override protected void onDestroy() {
+    @Override
+    protected void onDestroy() {
         super.onDestroy();
 
-        if(uFaceDetector != null) {
+        this.result = null;
+
+        if (uFaceDetector != null) {
             uFaceDetector.deinitDetector();
-            if(uFaceDetector.getPreview() != null) {
+            if (uFaceDetector.getPreview() != null) {
                 uFaceDetector.getPreview().setSurfaceProvider(null);
             }
-            if(uFaceDetector.getCameraExecutor() != null) {
+            if (uFaceDetector.getCameraExecutor() != null) {
                 uFaceDetector.getCameraExecutor().shutdown();
             }
-            if(uFaceDetector.getCameraProvider() != null) {
+            if (uFaceDetector.getCameraProvider() != null) {
                 uFaceDetector.getCameraProvider().unbindAll();
             }
         }

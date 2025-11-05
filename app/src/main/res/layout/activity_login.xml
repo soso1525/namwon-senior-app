@@ -4,27 +4,39 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <kr.go.namwon.seniorcenter.app.CommonHeader
-        android:id="@+id/customHeader"
+    <ImageView
+        android:id="@+id/ciImageView"
         android:layout_width="0dp"
-        android:layout_height="60dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:title="@string/camera_title" />
+        android:layout_height="20dp"
+        android:layout_marginTop="50dp"
+        android:src="@drawable/namwon_ci"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/appNameTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/pretendard_bold"
+        android:text="@string/app_name"
+        android:layout_marginTop="8dp"
+        android:textSize="30dp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toBottomOf="@id/ciImageView"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/layoutPreview"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="24dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintDimensionRatio="h,1:1"
-        app:layout_constraintStart_toStartOf="parent"
+        android:layout_margin="20dp"
         app:layout_constraintBottom_toTopOf="@id/layoutContent"
-        app:layout_constraintTop_toBottomOf="@+id/customHeader">
+        app:layout_constraintDimensionRatio="h,1:1"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/appNameTextView">
 
         <androidx.camera.view.PreviewView
             android:id="@+id/previewView"
@@ -76,63 +88,56 @@
         android:id="@+id/layoutContent"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="24dp"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/layoutPreview"
-        app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/layoutPreview">
 
         <TextView
             android:id="@+id/tvCameraText"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
             android:layout_marginStart="20dp"
+            android:layout_marginTop="20dp"
             android:layout_marginEnd="20dp"
+            android:fontFamily="@font/pretendard_semibold"
             android:gravity="center"
             android:text="@string/camera_front"
-            android:textSize="16dp"
+            android:textSize="20dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"/>
-
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/layoutYaw"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvCameraText">
-
-            <ImageView
-                android:id="@+id/ivLeft"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:layout_constraintLeft_toLeftOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                android:src="@drawable/left_off" />
-
-            <ImageView
-                android:id="@+id/ivFront"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="24dp"
-                android:layout_marginEnd="24dp"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintLeft_toRightOf="@id/ivLeft"
-                app:layout_constraintRight_toLeftOf="@id/ivRight"
-                android:src="@drawable/front_off" />
-
-            <ImageView
-                android:id="@+id/ivRight"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintLeft_toRightOf="@id/ivFront"
-                app:layout_constraintRight_toRightOf="parent"
-                android:src="@drawable/right_off" />
-
-        </androidx.constraintlayout.widget.ConstraintLayout>
+            app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginVertical="20dp"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <Button
+            android:id="@+id/faceAuthBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#e83736"
+            android:fontFamily="@font/pretendard_regular"
+            android:text="@string/login_with_face"
+            android:textColor="@color/white"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/phoneAuthBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="#f7f7f7"
+            android:fontFamily="@font/pretendard_regular"
+            android:text="@string/login_with_phone"
+            android:textColor="#e83535" />
+    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
