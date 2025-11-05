@@ -8,9 +8,8 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ApiClient {
-    // 에뮬레이터 기준 (필요시 10.0.2.2 → 실 IP로 변경)
-    private static final String BASE_URL = "http://192.168.0.25:8000/";
-
+//    private static final String BASE_URL = "http://192.168.0.25:8000/";
+    private static final String BASE_URL = "https://docker.dhdx.kr/senioredu/";
     private static Retrofit retrofit;
 
     public static Retrofit getRetrofit() {

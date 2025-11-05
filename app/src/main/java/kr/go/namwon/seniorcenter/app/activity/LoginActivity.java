@@ -1,5 +1,6 @@
-package kr.go.namwon.seniorcenter.app;
+package kr.go.namwon.seniorcenter.app.activity;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
@@ -13,12 +14,13 @@ import com.metsakuur.ufacedetector.model.UFaceProcessingMode;
 import com.metsakuur.ufacedetector.model.UFaceResult;
 import com.metsakuur.ufacedetector.model.UFaceStateModel;
 
+import kr.go.namwon.seniorcenter.app.R;
 import kr.go.namwon.seniorcenter.app.databinding.ActivityLoginBinding;
 import kr.go.namwon.seniorcenter.app.model.FaceVerifyRequest;
 import kr.go.namwon.seniorcenter.app.retrofit.ApiClient;
-import kr.go.namwon.seniorcenter.app.util.BaseAppCompatActivity;
 import kr.go.namwon.seniorcenter.app.util.ImageUtil;
 import kr.go.namwon.seniorcenter.app.util.LoadingDialog;
+import kr.go.namwon.seniorcenter.app.util.PrefsHelper;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -31,14 +33,7 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
 
     private LoadingDialog loadingDialog;
 
-    // 얼굴 검출기 UFaceDetector
     private UFaceDetector uFaceDetector = null;
-
-    // 눈깜빡임 검출 활성화 여부
-    Boolean isEyeBlinkEnabled = false;
-
-    // 눈깜빡임 통과 여부, 기본값 성공 및 통과
-    Boolean isEyeBlink = true;
 
     // 좌우 고개돌림 체크 완료
     boolean isYawFinish = true;
@@ -47,6 +42,15 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (!PrefsHelper.getString("accessToken", "").isEmpty()) {
+            Intent intent = new Intent(getBaseContext(), MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finishAffinity();
+            return;
+        }
+
         binding = ActivityLoginBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
@@ -75,6 +79,14 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                                     String refreshToken = res.get("bizportal-refresh-token").getAsString();
                                     String memberId = res.get("mdtlMbrId").getAsString();
 
+                                    PrefsHelper.putString("accessToken", accessToken);
+                                    PrefsHelper.putString("refreshToken", refreshToken);
+                                    PrefsHelper.putString("memberId", memberId);
+
+                                    Intent intent = new Intent(getBaseContext(), MainActivity.class);
+                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                    startActivity(intent);
+                                    finishAffinity();
                                 } else {
                                     Log.e(TAG, "Response body is null");
                                 }
@@ -133,9 +145,6 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     public void isDetectFace(Boolean isDetectFace) {
         if (isDetectFace) {
             binding.tvCameraText.setText(getString(R.string.camera_front));
-            if (!isEyeBlink) {
-                binding.tvCameraText.setText(getString(R.string.camera_eye_blink));
-            }
             binding.ivGuide.setImageResource(R.drawable.face_guide_green);
         } else {
             binding.ivGuide.setImageResource(R.drawable.face_guide_red);
@@ -150,9 +159,7 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     @Override
     public void uFaceDetector(UFaceDetector detector, UFaceStateModel faceState) {
         switch (faceState.getState()) {
-            /**
-             * 각 프레임 별로 디텍트 여부 호출
-             */
+
             case UFACE_STATE_FACE_DETECTED:
                 isDetectFace(true);
                 break;
@@ -162,26 +169,17 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                 this.result = null;
                 break;
 
-            /**
-             * 얼굴이 너무 멀리있을 때 호출
-             */
-            case UFACE_STATE_FACE_SMALL:
+            case UFACE_STATE_FACE_SMALL: // 얼굴이 너무 멀리 있을 때
                 binding.tvCameraText.setText(getString(R.string.face_too_far));
                 this.result = null;
                 break;
 
-            /**
-             * 얼굴이 너무 가까울 때 호출
-             */
-            case UFACE_STATE_FACE_LARGE:
+            case UFACE_STATE_FACE_LARGE: // 얼굴이 너무 가까이 있을 때
                 binding.tvCameraText.setText(getString(R.string.face_too_close));
                 this.result = null;
                 break;
 
-            /**
-             * Blur 감지 되었을 때 호출
-             */
-            case UFACE_STATE_FACE_BLUR:
+            case UFACE_STATE_FACE_BLUR: // 블러 감지
                 binding.tvCameraText.setText(getString(R.string.face_unclear));
                 this.result = null;
                 break;
@@ -193,23 +191,10 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
         }
     }
 
-    /**
-     * (ProcessMode = GEOMETRY MODE 일 경우에는 블러 체크 및 얼굴 검출 result 리스너 수행 안됨)
-     * UFaceGeometryModel 결과값 수신
-     * fullImage : 카메라 화면 전체 이미지
-     * boundingBox : 얼굴 크롭 이미지
-     * pitch : 얼굴 위 아래 돌림 수치(중앙 0 기준으로 위가 양수 값, 아래가 음수 값)
-     * yaw : 얼굴 좌우 돌림 수치 (중앙 0 기준으로 왼쪽이 음수 값, 오른쪽이 양수 값)
-     * roll : 얼굴 갸우뚱 수치 (중앙 0 기준으로 오른쪽 갸우뚱이 음수 값, 왼쪽 갸우뚱이 양수 값)
-     * landmarks: 얼굴 랜드 마크 정보 (UFaceLandmarks Model)
-     */
     @Override
     public void uFaceDetector(UFaceDetector detector, UFaceGeometryModel faceGeometry) {
     }
 
-    /**
-     * 에러 발생시 호출 에러코드는 가이드 문서 참조
-     */
     @Override
     public void uFaceDetector(UFaceDetector detector, UFaceError error) {
         switch (error.getErrorCode()) {
@@ -227,31 +212,16 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
         }
     }
 
-    /**
-     * 얼굴 정상 디텍트 되었을 때 호출(블러까지 통과 이후)
-     * 해당 리스너가 호출되면 디텍터가 동작을 멈추기 때문에 detector.resumeDetector() 호출해야 다음사진 결과 넘어옵니다.
-     */
     @Override
     public void uFaceDetector(UFaceDetector detector, UFaceResult result) {
-
-        // isEyeBlinkEnabled = 데모앱 설정화면 눈깜빡임 사용 여부 환경 변수 (사용 안할 시 false 가 기본값이므로 깜빡임 여부 상관없이 통과)
-        // result.isEyeBlinked = 눈깜빡임 성공 여부
-        // 환경 변수 조건은 데모앱 시나리오(isEyeBlinkEnabled)
-        // 눈깜빡임 여부는 result.isEyeBlinked 로 체크 가능
-        if (!isEyeBlinkEnabled || result.isEyeBlinked()) {
-            // 눈깜빡임 체크 성공
-            isEyeBlink = true;
-
-            // 고개 돌림 성공 체크 (사용 안할 시 true가 기본값이므로 통과)
-            if (isYawFinish) {
-                this.result = result;
-            } else {
-                // 해당 리스너로 결과괎이 수신되면 디텍터가 검출을 멈추기 때문에 resumeDetector를 호출해야 디텍터가 다시 동작 함
-                // 고개 돌림 아직 진행 중이므로, 고개 돌림 프로세스 다시 진행하도록 processingMode.GEOMETRY_MODE 로 변경
-                uFaceDetector.setProcessingMode(UFaceProcessingMode.GEOMETRY_MODE);
-                uFaceDetector.resumeDetector();
-            }
-
+        // 고개 돌림 성공 체크 (사용 안할 시 true가 기본값이므로 통과)
+        if (isYawFinish) {
+            this.result = result;
+        } else {
+            // 해당 리스너로 결과괎이 수신되면 디텍터가 검출을 멈추기 때문에 resumeDetector를 호출해야 디텍터가 다시 동작 함
+            // 고개 돌림 아직 진행 중이므로, 고개 돌림 프로세스 다시 진행하도록 processingMode.GEOMETRY_MODE 로 변경
+            uFaceDetector.setProcessingMode(UFaceProcessingMode.GEOMETRY_MODE);
+            uFaceDetector.resumeDetector();
         }
     }
 
@@ -274,7 +244,6 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
         this.result = null;
 
         if (uFaceDetector != null) {

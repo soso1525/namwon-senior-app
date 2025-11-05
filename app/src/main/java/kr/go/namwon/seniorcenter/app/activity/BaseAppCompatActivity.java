@@ -1,9 +1,11 @@
-package kr.go.namwon.seniorcenter.app.util;
+package kr.go.namwon.seniorcenter.app.activity;
 
 import android.os.Bundle;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.DialogInterface;
+
+import kr.go.namwon.seniorcenter.app.util.CustomDialog;
 
 public class BaseAppCompatActivity extends AppCompatActivity {
 
