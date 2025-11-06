@@ -16,7 +16,6 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -45,8 +44,14 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
             Manifest.permission.CAMERA
     };
 
-    private ActivityResultLauncher<String[]> permissionLauncher;
+    // ★ WebView 권한 요청 대기 핸들
+    private PermissionRequest pendingMediaPermissionRequest;
+    private String[] pendingMediaResources;
 
+    private GeolocationPermissions.Callback pendingGeoCallback;
+    private String pendingGeoOrigin;
+
+    private ActivityResultLauncher<String[]> permissionLauncher;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -57,7 +62,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         setContentView(binding.getRoot());
 
         initPermissionLauncher();
-        requestLocationAndMicIfNeeded();
+        requestLocationAndMicIfNeeded(); // 최초 일괄 점검
 
         webView = binding.webView;
 
@@ -71,47 +76,77 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
         webView.addJavascriptInterface(new JsBridge(this, this), "AndroidBridge");
         webView.setWebChromeClient(new WebChromeClient() {
-            @Override public boolean onConsoleMessage(ConsoleMessage cm) {
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage cm) {
                 Log.d("WebViewConsole", cm.message());
                 return super.onConsoleMessage(cm);
             }
 
-            // ★ 마이크/카메라 허용 처리 (getUserMedia)
-            @Override public void onPermissionRequest(final PermissionRequest request) {
+            // ★ getUserMedia 권한 처리 (카메라/마이크)
+            @Override
+            public void onPermissionRequest(final PermissionRequest request) {
                 runOnUiThread(() -> {
+                    String[] resources = request.getResources();
+                    boolean needsMic = false, needsCam = false;
+
+                    for (String res : resources) {
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(res)) needsMic = true;
+                        if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(res)) needsCam = true;
+                    }
+
+                    boolean hasMic = has(Manifest.permission.RECORD_AUDIO);
+                    boolean hasCam = has(Manifest.permission.CAMERA);
+
+                    List<String> toAsk = new ArrayList<>();
+                    if (needsMic && !hasMic) toAsk.add(Manifest.permission.RECORD_AUDIO);
+                    if (needsCam && !hasCam) toAsk.add(Manifest.permission.CAMERA);
+
+                    if (!toAsk.isEmpty()) {
+                        // 런타임 권한 먼저 요청 → 콜백에서 grant/deny 처리
+                        pendingMediaPermissionRequest = request;
+                        pendingMediaResources = resources;
+                        permissionLauncher.launch(toAsk.toArray(new String[0]));
+                        return;
+                    }
+
+                    // 이미 권한 보유 → 즉시 grant
                     List<String> allow = new ArrayList<>();
-                    for (String res : request.getResources()) {
-                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(res)) {
-                            if (ContextCompat.checkSelfPermission(getBaseContext(), Manifest.permission.RECORD_AUDIO)
-                                    == PackageManager.PERMISSION_GRANTED) {
-                                allow.add(res);
-                            }
-                        }
-                        if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(res)) {      // ✅ 카메라
-                            if (ContextCompat.checkSelfPermission(getBaseContext(), Manifest.permission.CAMERA)
-                                    == PackageManager.PERMISSION_GRANTED) {
-                                allow.add(res);
-                            }
-                        }
+                    for (String res : resources) {
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(res) && hasMic) allow.add(res);
+                        if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(res) && hasCam) allow.add(res);
                     }
                     if (!allow.isEmpty()) request.grant(allow.toArray(new String[0]));
                     else request.deny();
                 });
             }
 
+            // ★ HTML5 Geolocation 권한 처리
             @Override
             public void onGeolocationPermissionsShowPrompt(
                     String origin, GeolocationPermissions.Callback callback
             ) {
-                boolean hasLocation =
-                        ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)
-                                == PackageManager.PERMISSION_GRANTED
-                                || ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                                == PackageManager.PERMISSION_GRANTED;
+                boolean fine = has(Manifest.permission.ACCESS_FINE_LOCATION);
+                boolean coarse = has(Manifest.permission.ACCESS_COARSE_LOCATION);
 
-                callback.invoke(origin, hasLocation, false);
+                if (fine || coarse) {
+                    callback.invoke(origin, true, false);
+                } else {
+                    // 런타임 권한 먼저 요청 → 콜백에서 invoke 처리
+                    pendingGeoCallback = callback;
+                    pendingGeoOrigin = origin;
+                    permissionLauncher.launch(new String[]{
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                    });
+                }
+            }
+
+            @Override
+            public void onPermissionRequestCanceled(PermissionRequest request) {
+                Log.d(TAG, "onPermissionRequestCanceled: " + request);
             }
         });
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
@@ -152,16 +187,53 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         });
     }
 
+    private boolean has(String perm) {
+        return ContextCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED;
+    }
+
     private void initPermissionLauncher() {
         permissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestMultiplePermissions(),
                 result -> {
-                    boolean fine = Boolean.TRUE.equals(result.get(Manifest.permission.ACCESS_FINE_LOCATION));
-                    boolean coarse = Boolean.TRUE.equals(result.get(Manifest.permission.ACCESS_COARSE_LOCATION));
-                    boolean mic = Boolean.TRUE.equals(result.get(Manifest.permission.RECORD_AUDIO));
-                    boolean camera = Boolean.TRUE.equals(result.get(Manifest.permission.CAMERA));
+                    // 일부 단말/경로에서 result map이 비어있을 수 있으므로, 최종 상태는 직접 재확인
+                    boolean cam = has(Manifest.permission.CAMERA);
+                    boolean mic = has(Manifest.permission.RECORD_AUDIO);
+                    boolean fine = has(Manifest.permission.ACCESS_FINE_LOCATION);
+                    boolean coarse = has(Manifest.permission.ACCESS_COARSE_LOCATION);
 
-                    if ((fine || coarse) && mic && camera) {
+//                    dumpPermissions(); // 디버깅용
+
+                    // ★ 대기 중인 getUserMedia 처리
+                    if (pendingMediaPermissionRequest != null && pendingMediaResources != null) {
+                        List<String> allow = new ArrayList<>();
+                        for (String res : pendingMediaResources) {
+                            if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(res) && mic) {
+                                allow.add(res);
+                            } else if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(res) && cam) {
+                                allow.add(res);
+                            }
+                        }
+
+                        if (!allow.isEmpty()) {
+                            pendingMediaPermissionRequest.grant(allow.toArray(new String[0]));
+                        } else {
+                            pendingMediaPermissionRequest.deny();
+                        }
+
+                        pendingMediaPermissionRequest = null;
+                        pendingMediaResources = null;
+                    }
+
+                    // ★ 대기 중인 Geolocation 처리
+                    if (pendingGeoCallback != null && pendingGeoOrigin != null) {
+                        boolean hasLocation = fine || coarse;
+                        pendingGeoCallback.invoke(pendingGeoOrigin, hasLocation, false);
+                        pendingGeoCallback = null;
+                        pendingGeoOrigin = null;
+                    }
+
+                    // 안내 로그
+                    if ((fine || coarse) && mic && cam) {
                         onPermissionsGranted();
                     } else {
                         onPermissionsDenied();
@@ -170,12 +242,23 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         );
     }
 
+    private void dumpPermissions() {
+        String[] perms = {
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+        };
+        for (String p : perms) {
+            int s = ContextCompat.checkSelfPermission(this, p);
+            Log.d("PermDump", p + " = " + (s == PackageManager.PERMISSION_GRANTED ? "GRANTED" : "DENIED"));
+        }
+    }
+
     public void requestLocationAndMicIfNeeded() {
         List<String> need = new ArrayList<>();
         for (String p : PERMS) {
-            if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
-                need.add(p);
-            }
+            if (!has(p)) need.add(p);
         }
         if (!need.isEmpty()) {
             permissionLauncher.launch(need.toArray(new String[0]));
@@ -185,13 +268,13 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     }
 
     private void onPermissionsGranted() {
-        Log.d(TAG, "위치, 마이크 권한 허용 됨.");
+        Log.d(TAG, "카메라/마이크/위치 권한 허용됨.");
     }
 
     private void onPermissionsDenied() {
         new AlertDialog.Builder(this)
                 .setTitle("권한 필요")
-                .setMessage("서비스를 사용하려면 위치와 마이크 권한이 필요합니다.\n설정에서 권한을 허용해주세요.")
+                .setMessage("서비스를 사용하려면 카메라, 마이크, 위치 권한이 필요합니다.\n설정에서 권한을 허용해주세요.")
                 .setPositiveButton("설정 열기", (d, w) -> {
                     Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                     i.setData(Uri.fromParts("package", getPackageName(), null));
@@ -223,7 +306,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                     String js = "localStorage.setItem('logintool', 'basic');"
                             + "localStorage.setItem('userJwt', '');"
                             + "localStorage.setItem('refreshJwt', '');";
-
                     webView.evaluateJavascript(js, null);
                     Intent intent = new Intent(this, LoginActivity.class);
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -241,5 +323,15 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     @Override
     public void updateToken(String accessToken) {
         PrefsHelper.putString("accessToken", accessToken);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // ★ pending 정리
+        pendingMediaPermissionRequest = null;
+        pendingMediaResources = null;
+        pendingGeoCallback = null;
+        pendingGeoOrigin = null;
     }
 }
