@@ -13,7 +13,18 @@ public class JsBridge {
     }
 
     @JavascriptInterface
+    public void updateToken(String accessToken) {
+        jsBridgeInterface.updateToken(accessToken);
+    }
+
+    @JavascriptInterface
+    public void registerFace() {
+        jsBridgeInterface.registerFace();
+    }
+
+    @JavascriptInterface
     public void logout() {
         jsBridgeInterface.logout();
     }
 }
+

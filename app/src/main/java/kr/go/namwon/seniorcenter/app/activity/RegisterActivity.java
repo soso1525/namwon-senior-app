@@ -16,6 +16,8 @@ import com.metsakuur.ufacedetector.model.UFaceStateModel;
 
 import kr.go.namwon.seniorcenter.app.R;
 import kr.go.namwon.seniorcenter.app.databinding.ActivityLoginBinding;
+import kr.go.namwon.seniorcenter.app.databinding.ActivityRegisterBinding;
+import kr.go.namwon.seniorcenter.app.model.FaceRegisterRequest;
 import kr.go.namwon.seniorcenter.app.model.FaceVerifyRequest;
 import kr.go.namwon.seniorcenter.app.retrofit.ApiClient;
 import kr.go.namwon.seniorcenter.app.util.ImageUtil;
@@ -27,13 +29,12 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class LoginActivity extends BaseAppCompatActivity implements UFaceDetectorListener {
-    public static final String TAG = "TAG_LoginActivity";
+public class RegisterActivity extends BaseAppCompatActivity implements UFaceDetectorListener {
+    public static final String TAG = "TAG_RegisterActivity";
 
-    private ActivityLoginBinding binding;
+    private ActivityRegisterBinding binding;
 
     private LoadingDialog loadingDialog;
-    private LoginDialog loginDialog;
     private UFaceDetector uFaceDetector = null;
 
     // 좌우 고개돌림 체크 완료
@@ -44,65 +45,79 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (!PrefsHelper.getString("accessToken", "").isEmpty()) {
-            Intent intent = new Intent(getBaseContext(), MainActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finishAffinity();
+        if (PrefsHelper.getString("accessToken", "").isEmpty()) {
+            getOnBackPressedDispatcher().onBackPressed();
             return;
         }
 
-        binding = ActivityLoginBinding.inflate(getLayoutInflater());
+        binding = ActivityRegisterBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        loadingDialog = new LoadingDialog(LoginActivity.this);
-        loginDialog = new LoginDialog(LoginActivity.this);
-        loginDialog.setCancelable(false);
+        loadingDialog = new LoadingDialog(RegisterActivity.this);
         initDetector();
 
-        binding.phoneAuthBtn.setOnClickListener(view -> loginDialog.show());
-        binding.faceAuthBtn.setOnClickListener(view -> {
+        binding.cancelBtn.setOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
+        binding.registerBtn.setOnClickListener(view -> {
             if (result == null) {
                 Toast.makeText(getApplicationContext(), getString(R.string.empty_face_result), Toast.LENGTH_SHORT).show();
                 return;
             }
 
             loadingDialog.show();
-            binding.faceAuthBtn.setEnabled(false);
+            binding.registerBtn.setEnabled(false);
 
-            FaceVerifyRequest request = new FaceVerifyRequest(ImageUtil.bitmapToBase64(result.getFullImage()));
+            FaceRegisterRequest request = new FaceRegisterRequest(PrefsHelper.getString("accessToken", ""), ImageUtil.bitmapToBase64(result.getFullImage()));
             ApiClient.authApi()
-                    .verify(request)
+                    .register(request)
                     .enqueue(new Callback<JsonObject>() {
                         @Override
                         public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
                             loadingDialog.dismiss();
-                            binding.faceAuthBtn.setEnabled(true);
+                            binding.registerBtn.setEnabled(true);
 
                             if (response.isSuccessful()) {
                                 JsonObject res = response.body();
-                                if (res != null) {
-                                    String accessToken = res.get("bizportal-access-token").getAsString();
-                                    String refreshToken = res.get("bizportal-refresh-token").getAsString();
+                                Log.e(TAG, "register result: " + res);
 
-                                    PrefsHelper.putString("accessToken", accessToken);
-                                    PrefsHelper.putString("refreshToken", refreshToken);
+                                int code = res.get("code").getAsInt();
+                                String message = res.get("message").getAsString();
 
-                                    Intent intent = new Intent(getBaseContext(), MainActivity.class);
-                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                    startActivity(intent);
-                                    finishAffinity();
-                                } else {
-                                    Log.e(TAG, "Response body is null");
+                                if (code == 0) {
+                                    Toast.makeText(getBaseContext(), "얼굴이 등록되었습니다.", Toast.LENGTH_SHORT).show();
+                                    getOnBackPressedDispatcher().onBackPressed();
+                                    return;
+                                }
+
+                                if (code == 21013) {
+                                    Toast.makeText(getBaseContext(), message, Toast.LENGTH_SHORT).show();
+                                    getOnBackPressedDispatcher().onBackPressed();
+                                    return;
+                                }
+
+                                else {
+                                    Toast.makeText(getBaseContext(), "얼굴을 등록할 수 없습니다.", Toast.LENGTH_SHORT).show();
                                 }
                             } else {
-                                if (response.code() == 404) {
-                                    openAlertView(getString(R.string.unregistered_user), (dialogInterface, i) -> dialogInterface.dismiss());
-                                }
-
+                                Toast.makeText(getBaseContext(), "얼굴을 등록할 수 없습니다.", Toast.LENGTH_SHORT).show();
                                 try (ResponseBody errorBody = response.errorBody()) {
                                     String err = errorBody != null ? errorBody.string() : "null";
                                     Log.e(TAG, "Server error " + response.code() + ": " + err);
+
+                                    if (response.code() == 401) {
+                                        ApiClient.authApi().updateToken().enqueue(new Callback<JsonObject>() {
+                                            @Override
+                                            public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
+                                                JsonObject res = response.body();
+                                                Log.e(TAG, "Token update result: " + res);
+                                            }
+
+                                            @Override
+                                            public void onFailure(Call<JsonObject> call, Throwable t) {
+                                                Log.e(TAG, "Token update fail: " + t.getMessage());
+                                            }
+                                        });
+                                    }
+
                                 } catch (Exception e) {
                                     Log.e(TAG, "Read errorBody failed", e);
                                 }
@@ -112,6 +127,7 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                         @Override
                         public void onFailure(Call<JsonObject> call, Throwable t) {
                             loadingDialog.dismiss();
+                            Toast.makeText(getBaseContext(), "얼굴을 등록할 수 없습니다.", Toast.LENGTH_SHORT).show();
                             Log.e(TAG, "Network failure: " + t.getMessage(), t);
                         }
                     });
