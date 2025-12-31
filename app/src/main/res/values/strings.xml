@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">남원 E-케어</string>
+    <string name="app_name">남원 e케어</string>
     <string name="login_with_phone">휴대폰 번호 로그인하기</string>
     <string name="login_with_face">안면인식 로그인하기</string>
     <string name="register_with_face">안면인식 등록하기</string>
