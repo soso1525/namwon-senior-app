@@ -45,11 +45,6 @@ public class RegisterActivity extends BaseAppCompatActivity implements UFaceDete
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (PrefsHelper.getString("accessToken", "").isEmpty()) {
-            getOnBackPressedDispatcher().onBackPressed();
-            return;
-        }
-
         binding = ActivityRegisterBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
@@ -66,7 +61,7 @@ public class RegisterActivity extends BaseAppCompatActivity implements UFaceDete
             loadingDialog.show();
             binding.registerBtn.setEnabled(false);
 
-            FaceRegisterRequest request = new FaceRegisterRequest(PrefsHelper.getString("accessToken", ""), ImageUtil.bitmapToBase64(result.getFullImage()));
+            FaceRegisterRequest request = new FaceRegisterRequest(ImageUtil.bitmapToBase64(result.getFullImage()));
             ApiClient.authApi()
                     .register(request)
                     .enqueue(new Callback<JsonObject>() {
@@ -85,16 +80,10 @@ public class RegisterActivity extends BaseAppCompatActivity implements UFaceDete
                                 if (code == 0) {
                                     Toast.makeText(getBaseContext(), "얼굴이 등록되었습니다.", Toast.LENGTH_SHORT).show();
                                     getOnBackPressedDispatcher().onBackPressed();
-                                    return;
-                                }
-
-                                if (code == 21013) {
-                                    Toast.makeText(getBaseContext(), message, Toast.LENGTH_SHORT).show();
+                                } else if (code == 28012) {
+                                    Toast.makeText(getBaseContext(), "이미 안면인식 등록된 사용자입니다.", Toast.LENGTH_SHORT).show();
                                     getOnBackPressedDispatcher().onBackPressed();
-                                    return;
-                                }
-
-                                else {
+                                } else {
                                     Toast.makeText(getBaseContext(), "얼굴을 등록할 수 없습니다.", Toast.LENGTH_SHORT).show();
                                 }
                             } else {

@@ -75,21 +75,23 @@ public class LoginDialog extends Dialog {
                                 Log.e(TAG, "response body: " + res);
 
                                 if (res != null) {
-                                    String accessToken = res.get("bizportal-access-token").getAsString();
-                                    String refreshToken = res.get("bizportal-refresh-token").getAsString();
+                                    String accessToken = res.get(Constants.TokenAccessKey).getAsString();
+                                    String refreshToken = res.get(Constants.TokenRefreshKey).getAsString();
 
                                     PrefsHelper.putString("accessToken", accessToken);
                                     PrefsHelper.putString("refreshToken", refreshToken);
 
                                     Intent intent = new Intent(getContext(), MainActivity.class);
                                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                    intent.putExtra("accessToken", accessToken);
+                                    intent.putExtra("refreshToken", refreshToken);
                                     getContext().startActivity(intent);
                                     dismiss();
                                 } else {
                                     Log.e(TAG, "Response body is null");
                                 }
                             } else {
-                                Toast.makeText(getContext(), getContext().getString(R.string.unregistered_user), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getContext(), getContext().getString(R.string.login_fail_message), Toast.LENGTH_SHORT).show();
                                 dismiss();
 
                                 try (ResponseBody errorBody = response.errorBody()) {

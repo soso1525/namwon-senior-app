@@ -21,6 +21,10 @@ public interface AuthApi {
     @POST("v1/auth/face/register")
     Call<JsonObject> register(@Body FaceRegisterRequest request);
 
+    @Headers("Content-Type: application/json")
+    @GET("v1/auth/face/status")
+    Call<JsonObject> getFaceStatus();
+
     @FormUrlEncoded
     @POST("v1/auth/ext/loginWithIdPwd")
     Call<JsonObject> login(

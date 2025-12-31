@@ -18,11 +18,11 @@ import kr.go.namwon.seniorcenter.app.R;
 import kr.go.namwon.seniorcenter.app.databinding.ActivityLoginBinding;
 import kr.go.namwon.seniorcenter.app.model.FaceVerifyRequest;
 import kr.go.namwon.seniorcenter.app.retrofit.ApiClient;
+import kr.go.namwon.seniorcenter.app.util.Constants;
 import kr.go.namwon.seniorcenter.app.util.ImageUtil;
 import kr.go.namwon.seniorcenter.app.util.LoadingDialog;
 import kr.go.namwon.seniorcenter.app.util.LoginDialog;
 import kr.go.namwon.seniorcenter.app.util.PrefsHelper;
-import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -44,13 +44,7 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if (!PrefsHelper.getString("accessToken", "").isEmpty()) {
-            Intent intent = new Intent(getBaseContext(), MainActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finishAffinity();
-            return;
-        }
+        PrefsHelper.clear();
 
         binding = ActivityLoginBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -79,34 +73,61 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                             loadingDialog.dismiss();
                             binding.faceAuthBtn.setEnabled(true);
 
-                            if (response.isSuccessful()) {
-                                JsonObject res = response.body();
-                                if (res != null) {
-                                    String accessToken = res.get("bizportal-access-token").getAsString();
-                                    String refreshToken = res.get("bizportal-refresh-token").getAsString();
-
-                                    PrefsHelper.putString("accessToken", accessToken);
-                                    PrefsHelper.putString("refreshToken", refreshToken);
-
-                                    Intent intent = new Intent(getBaseContext(), MainActivity.class);
-                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                    startActivity(intent);
-                                    finishAffinity();
-                                } else {
-                                    Log.e(TAG, "Response body is null");
-                                }
-                            } else {
-                                if (response.code() == 404) {
-                                    openAlertView(getString(R.string.unregistered_user), (dialogInterface, i) -> dialogInterface.dismiss());
-                                }
-
-                                try (ResponseBody errorBody = response.errorBody()) {
-                                    String err = errorBody != null ? errorBody.string() : "null";
-                                    Log.e(TAG, "Server error " + response.code() + ": " + err);
-                                } catch (Exception e) {
-                                    Log.e(TAG, "Read errorBody failed", e);
-                                }
+                            if (!response.isSuccessful()) {
+                                openAlertView("얼굴을 인식할 수 없습니다.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                return;
                             }
+
+                            JsonObject res = response.body();
+                            int resCode = res.get("code").getAsInt();
+
+                            if (resCode != 0) {
+                                switch (resCode) {
+                                    case 28001:
+                                        openAlertView(getString(R.string.unregistered_user), (dialogInterface, i) -> dialogInterface.dismiss());
+                                        break;
+                                    case 28002:
+                                        openAlertView("일치하는 사용자가 없습니다.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                        break;
+                                    case 28003:
+                                        openAlertView("선글라스를 벗고 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                        break;
+                                    case 28004:
+                                        openAlertView("마스크를 벗고 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                        break;
+                                    case 28005:
+                                        openAlertView("눈을 뜨고 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                        break;
+                                    case 28006:
+                                        openAlertView("가까이 다가와서 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                        break;
+                                    case 28007:
+                                        openAlertView("정면에서 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                        break;
+                                    case 28008:
+                                        openAlertView("카메라를 닦은 후 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                        break;
+                                    default:
+                                        openAlertView("얼굴을 인식할 수 없습니다.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                        break;
+                                }
+
+                                return;
+                            }
+
+                            JsonObject resultVO = res.get("resultVO").getAsJsonObject();
+                            String accessToken = resultVO.get(Constants.TokenAccessKey).getAsString();
+                            String refreshToken = resultVO.get(Constants.TokenRefreshKey).getAsString();
+
+                            PrefsHelper.putString("accessToken", accessToken);
+                            PrefsHelper.putString("refreshToken", refreshToken);
+
+                            Intent intent = new Intent(getBaseContext(), MainActivity.class);
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                            intent.putExtra("accessToken", accessToken);
+                            intent.putExtra("refreshToken", refreshToken);
+                            startActivity(intent);
+                            finishAffinity();
                         }
 
                         @Override
@@ -127,7 +148,7 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
         // 디텍터 리스너 세팅
         uFaceDetector.setFaceDetectorListener(this);
         // 눈깜빡임 사용 여부
-        uFaceDetector.setUseEyeBlink(true);
+        uFaceDetector.setUseEyeBlink(false);
         // 디텍터 초기화
         uFaceDetector.initDetector(this, "4F5A46527631008115020932123D9CB2313497831B23111BC957CED78F1C6F8731D6A7BEB6ED3B588CC9063F0D6AA09471BDFA61207FF2A0");
     }
@@ -160,7 +181,6 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     @Override
     public void uFaceDetector(UFaceDetector detector, UFaceStateModel faceState) {
         switch (faceState.getState()) {
-
             case UFACE_STATE_FACE_DETECTED:
                 isDetectFace(true);
                 break;
@@ -171,17 +191,23 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                 break;
 
             case UFACE_STATE_FACE_SMALL: // 얼굴이 너무 멀리 있을 때
+                Log.e(TAG, "UFACE STATE >> FACE SMALL");
                 binding.tvCameraText.setText(getString(R.string.face_too_far));
+                isDetectFace(false);
                 this.result = null;
                 break;
 
             case UFACE_STATE_FACE_LARGE: // 얼굴이 너무 가까이 있을 때
+                Log.e(TAG, "UFACE STATE >> FACE LARGE");
                 binding.tvCameraText.setText(getString(R.string.face_too_close));
+                isDetectFace(false);
                 this.result = null;
                 break;
 
             case UFACE_STATE_FACE_BLUR: // 블러 감지
+                Log.e(TAG, "UFACE STATE >> FACE BLUR");
                 binding.tvCameraText.setText(getString(R.string.face_unclear));
+                isDetectFace(false);
                 this.result = null;
                 break;
 

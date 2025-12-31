@@ -23,19 +23,27 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 
+import com.google.gson.JsonObject;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import kr.go.namwon.seniorcenter.app.databinding.ActivityMainBinding;
+import kr.go.namwon.seniorcenter.app.retrofit.ApiClient;
 import kr.go.namwon.seniorcenter.app.util.JsBridge;
 import kr.go.namwon.seniorcenter.app.util.JsBridgeInterface;
 import kr.go.namwon.seniorcenter.app.util.PrefsHelper;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends BaseAppCompatActivity implements JsBridgeInterface {
 
     private static final String TAG = "TAG_MainActivity";
     private ActivityMainBinding binding;
     private WebView webView;
+    private String accessToken;
+    private String refreshToken;
 
     private static final String[] PERMS = {
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -61,6 +69,9 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        accessToken = getIntent().getStringExtra("accessToken");
+        refreshToken = getIntent().getStringExtra("refreshToken");
+
         initPermissionLauncher();
         requestLocationAndMicIfNeeded(); // 최초 일괄 점검
 
@@ -84,7 +95,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
             // ★ getUserMedia 권한 처리 (카메라/마이크)
             @Override
-            public void onPermissionRequest(final PermissionRequest request) {
+            public void onPermissionRequest(final PermissionRequest request) { // WebView에서 카메라/마이크 권한 요청 들어오는 함수
                 runOnUiThread(() -> {
                     String[] resources = request.getResources();
                     boolean needsMic = false, needsCam = false;
@@ -112,8 +123,10 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                     // 이미 권한 보유 → 즉시 grant
                     List<String> allow = new ArrayList<>();
                     for (String res : resources) {
-                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(res) && hasMic) allow.add(res);
-                        if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(res) && hasCam) allow.add(res);
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(res) && hasMic)
+                            allow.add(res);
+                        if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(res) && hasCam)
+                            allow.add(res);
                     }
                     if (!allow.isEmpty()) request.grant(allow.toArray(new String[0]));
                     else request.deny();
@@ -122,8 +135,8 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
             // ★ HTML5 Geolocation 권한 처리
             @Override
-            public void onGeolocationPermissionsShowPrompt(
-                    String origin, GeolocationPermissions.Callback callback
+            public void onGeolocationPermissionsShowPrompt( // WebView에서 위치 권한 요청 들어오는 함수
+                                                            String origin, GeolocationPermissions.Callback callback
             ) {
                 boolean fine = has(Manifest.permission.ACCESS_FINE_LOCATION);
                 boolean coarse = has(Manifest.permission.ACCESS_COARSE_LOCATION);
@@ -172,6 +185,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         });
 
         webView.loadUrl("https://bit-senior.netlify.app/home/uaHome/");
+//        webView.loadUrl("https://smart-sc-senior-front.vercel.app/login");
         binding.swipeRefreshLayout.setOnRefreshListener(() -> webView.reload());
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -285,9 +299,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     }
 
     private void initToken() {
-        String accessToken = PrefsHelper.getString("accessToken", "");
-        String refreshToken = PrefsHelper.getString("refreshToken", "");
-
         String js = "localStorage.setItem('logintool', 'basic');"
                 + "localStorage.setItem('userJwt', '" + accessToken + "');"
                 + "localStorage.setItem('refreshJwt', '" + refreshToken + "');";

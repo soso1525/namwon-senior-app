@@ -2,6 +2,7 @@ package kr.go.namwon.seniorcenter.app.retrofit;
 
 import java.io.IOException;
 
+import kr.go.namwon.seniorcenter.app.util.Constants;
 import kr.go.namwon.seniorcenter.app.util.PrefsHelper;
 import okhttp3.Interceptor;
 import okhttp3.Request;
@@ -13,7 +14,7 @@ public class TokenInterceptor implements Interceptor {
     public Response intercept(Chain chain) throws IOException {
         Request original = chain.request();
         Request.Builder builder = original.newBuilder()
-                .header("bizportal-access-token", PrefsHelper.getString("accessToken", ""));
+                .header(Constants.TokenAccessKey, PrefsHelper.getString("accessToken", ""));
         Request request = builder.build();
         return chain.proceed(request);
     }

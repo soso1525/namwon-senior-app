@@ -5,6 +5,7 @@
     <string name="register_with_face">안면인식 등록하기</string>
     <string name="empty_face_result">얼굴 촬영이 필요합니다.</string>
     <string name="unregistered_user">등록되지 않은 사용자입니다.</string>
+    <string name="login_fail_message">사용자 정보를 확인할 수 없습니다.</string>
     <string name="face_too_close">조금 멀리 얼굴을 보여주세요.</string>
     <string name="face_too_far">조금 가까이 얼굴을 보여주세요.</string>
     <string name="face_unclear">카메라를 정면으로 비추고 너무 어둡거나 역광이 있는 곳을 피해 주세요.\n전면 카메라 렌즈를 깨끗이 닦아주세요.</string>
