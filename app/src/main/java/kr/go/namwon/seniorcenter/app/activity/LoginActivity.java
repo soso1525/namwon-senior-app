@@ -38,7 +38,9 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
 
     // 좌우 고개돌림 체크 완료
     boolean isYawFinish = true;
-    UFaceResult result = null;
+    private UFaceResult result = null;
+    boolean isProcessing = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +63,7 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                 return;
             }
 
+            isProcessing = true;
             loadingDialog.show();
             binding.faceAuthBtn.setEnabled(false);
 
@@ -70,6 +73,7 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                     .enqueue(new Callback<JsonObject>() {
                         @Override
                         public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
+                            isProcessing = false;
                             loadingDialog.dismiss();
                             binding.faceAuthBtn.setEnabled(true);
 
@@ -79,59 +83,59 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                             }
 
                             JsonObject res = response.body();
+                            Log.e(TAG, res.toString());
                             int resCode = res.get("code").getAsInt();
+                            if (resCode == 0) {
+                                JsonObject resultVO = res.get("resultVO").getAsJsonObject();
+                                String accessToken = resultVO.get(Constants.TokenAccessKey).getAsString();
+                                String refreshToken = resultVO.get(Constants.TokenRefreshKey).getAsString();
 
-                            if (resCode != 0) {
-                                switch (resCode) {
-                                    case 28001:
-                                        openAlertView(getString(R.string.unregistered_user), (dialogInterface, i) -> dialogInterface.dismiss());
-                                        break;
-                                    case 28002:
-                                        openAlertView("일치하는 사용자가 없습니다.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                        break;
-                                    case 28003:
-                                        openAlertView("선글라스를 벗고 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                        break;
-                                    case 28004:
-                                        openAlertView("마스크를 벗고 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                        break;
-                                    case 28005:
-                                        openAlertView("눈을 뜨고 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                        break;
-                                    case 28006:
-                                        openAlertView("가까이 다가와서 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                        break;
-                                    case 28007:
-                                        openAlertView("정면에서 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                        break;
-                                    case 28008:
-                                        openAlertView("카메라를 닦은 후 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                        break;
-                                    default:
-                                        openAlertView("얼굴을 인식할 수 없습니다.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                        break;
-                                }
+                                PrefsHelper.putString("accessToken", accessToken);
+                                PrefsHelper.putString("refreshToken", refreshToken);
 
+                                Intent intent = new Intent(getBaseContext(), MainActivity.class);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                intent.putExtra("accessToken", accessToken);
+                                intent.putExtra("refreshToken", refreshToken);
+                                startActivity(intent);
+                                finishAffinity();
                                 return;
                             }
 
-                            JsonObject resultVO = res.get("resultVO").getAsJsonObject();
-                            String accessToken = resultVO.get(Constants.TokenAccessKey).getAsString();
-                            String refreshToken = resultVO.get(Constants.TokenRefreshKey).getAsString();
-
-                            PrefsHelper.putString("accessToken", accessToken);
-                            PrefsHelper.putString("refreshToken", refreshToken);
-
-                            Intent intent = new Intent(getBaseContext(), MainActivity.class);
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                            intent.putExtra("accessToken", accessToken);
-                            intent.putExtra("refreshToken", refreshToken);
-                            startActivity(intent);
-                            finishAffinity();
+                            switch (resCode) {
+                                case 28001:
+                                    openAlertView(getString(R.string.unregistered_user), (dialogInterface, i) -> dialogInterface.dismiss());
+                                    break;
+                                case 28002:
+                                    openAlertView("일치하는 사용자가 없습니다.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                    break;
+                                case 28003:
+                                    openAlertView("선글라스를 벗고 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                    break;
+                                case 28004:
+                                    openAlertView("마스크를 벗고 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                    break;
+                                case 28005:
+                                    openAlertView("눈을 뜨고 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                    break;
+                                case 28006:
+                                    openAlertView("가까이 다가와서 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                    break;
+                                case 28007:
+                                    openAlertView("정면에서 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                    break;
+                                case 28008:
+                                    openAlertView("카메라를 닦은 후 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                    break;
+                                default:
+                                    openAlertView("얼굴을 인식할 수 없습니다.", (dialogInterface, i) -> dialogInterface.dismiss());
+                                    break;
+                            }
                         }
 
                         @Override
                         public void onFailure(Call<JsonObject> call, Throwable t) {
+                            isProcessing = false;
                             loadingDialog.dismiss();
                             Log.e(TAG, "Network failure: " + t.getMessage(), t);
                         }
@@ -140,7 +144,6 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     }
 
     private void initDetector() {
-
         // 디렉터 초기화
         uFaceDetector = new UFaceDetector();
         // 카메라 프리뷰 세팅
@@ -212,6 +215,7 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                 break;
 
             default:
+                isDetectFace(false);
                 this.result = null;
                 break;
 
@@ -242,14 +246,17 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     @Override
     public void uFaceDetector(UFaceDetector detector, UFaceResult result) {
         // 고개 돌림 성공 체크 (사용 안할 시 true가 기본값이므로 통과)
-        if (isYawFinish) {
+//        if (isYawFinish) {
+//            this.result = result;
+//        } else {
+//            // 해당 리스너로 결과괎이 수신되면 디텍터가 검출을 멈추기 때문에 resumeDetector를 호출해야 디텍터가 다시 동작 함
+//            // 고개 돌림 아직 진행 중이므로, 고개 돌림 프로세스 다시 진행하도록 processingMode.GEOMETRY_MODE 로 변경
+//            uFaceDetector.setProcessingMode(UFaceProcessingMode.GEOMETRY_MODE);
+//            uFaceDetector.resumeDetector();
+//        }
+
+        if (!isProcessing)
             this.result = result;
-        } else {
-            // 해당 리스너로 결과괎이 수신되면 디텍터가 검출을 멈추기 때문에 resumeDetector를 호출해야 디텍터가 다시 동작 함
-            // 고개 돌림 아직 진행 중이므로, 고개 돌림 프로세스 다시 진행하도록 processingMode.GEOMETRY_MODE 로 변경
-            uFaceDetector.setProcessingMode(UFaceProcessingMode.GEOMETRY_MODE);
-            uFaceDetector.resumeDetector();
-        }
     }
 
     @Override
