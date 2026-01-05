@@ -137,6 +137,10 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                         public void onFailure(Call<JsonObject> call, Throwable t) {
                             isProcessing = false;
                             loadingDialog.dismiss();
+                            binding.faceAuthBtn.setEnabled(true);
+
+                            openAlertView("로그인을 할 수 없습니다. 서버를 확인해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+
                             Log.e(TAG, "Network failure: " + t.getMessage(), t);
                         }
                     });
@@ -153,7 +157,7 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
         // 눈깜빡임 사용 여부
         uFaceDetector.setUseEyeBlink(false);
         // 디텍터 초기화
-        uFaceDetector.initDetector(this, "4F5A46527631008115020932123D9CB2313497831B23111BC957CED78F1C6F8731D6A7BEB6ED3B588CC9063F0D6AA09471BDFA61207FF2A0");
+        uFaceDetector.initDetector(this, "4F5A46527631008115020932123D9CB2313497831B23111BC957CED78F1C6F8731D6A7BEB6ED3B585082B77FC7717F04E081C3B39C14E37F");
     }
 
     /**
