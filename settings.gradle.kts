@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LemonDemo"
+rootProject.name = "NamwonSeniorApp"
 include(":app")

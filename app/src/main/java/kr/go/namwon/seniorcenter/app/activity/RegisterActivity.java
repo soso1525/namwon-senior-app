@@ -134,7 +134,7 @@ public class RegisterActivity extends BaseAppCompatActivity implements UFaceDete
         // 눈깜빡임 사용 여부
         uFaceDetector.setUseEyeBlink(true);
         // 디텍터 초기화
-        uFaceDetector.initDetector(this, "4F5A46527631008115020932123D9CB2313497831B23111BC957CED78F1C6F8731D6A7BEB6ED3B588CC9063F0D6AA09471BDFA61207FF2A0");
+        uFaceDetector.initDetector(this, "4F5A46527631008115020932123D9CB2313497831B23111BC957CED78F1C6F8731D6A7BEB6ED3B585082B77FC7717F04E081C3B39C14E37F");
     }
 
     /**

@@ -7,8 +7,12 @@
         android:required="false" />
 
     <!-- 실제 카메라/마이크가 없는 기기에서는 설치 대상 제외(선택) -->
-    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
-    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
 
     <!-- (선택) Android 14+에서 서비스로 녹화/캡처할 때 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
@@ -21,6 +25,20 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+
+    <queries>
+        <!-- 특정 패키지를 직접 가시화 -->
+        <package android:name="zone.cloudboda" />
+
+        <!-- 또는 scheme 기반 VIEW 인텐트 가시화 -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="cloudboda" />
+        </intent>
+
+    </queries>
 
     <application
         android:name=".App"
@@ -46,10 +64,16 @@
 
         <activity
             android:name=".activity.MainActivity"
+            android:windowSoftInputMode="adjustResize|stateHidden"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="fullSensor" />
         <activity
             android:name=".activity.RegisterActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:windowSoftInputMode="adjustResize|stateHidden"
+            android:screenOrientation="fullSensor" />
+        <activity
+            android:name=".activity.SignUpActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="fullSensor" />
 

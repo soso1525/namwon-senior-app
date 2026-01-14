@@ -10,7 +10,6 @@ import com.metsakuur.ufacedetector.UFaceDetector;
 import com.metsakuur.ufacedetector.UFaceDetectorListener;
 import com.metsakuur.ufacedetector.model.UFaceError;
 import com.metsakuur.ufacedetector.model.UFaceGeometryModel;
-import com.metsakuur.ufacedetector.model.UFaceProcessingMode;
 import com.metsakuur.ufacedetector.model.UFaceResult;
 import com.metsakuur.ufacedetector.model.UFaceStateModel;
 
@@ -56,6 +55,7 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
         loginDialog.setCancelable(false);
         initDetector();
 
+        binding.joinBtn.setOnClickListener(view -> startActivity(new Intent(this, SignUpActivity.class)));
         binding.phoneAuthBtn.setOnClickListener(view -> loginDialog.show());
         binding.faceAuthBtn.setOnClickListener(view -> {
             if (result == null) {

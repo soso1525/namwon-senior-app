@@ -8,9 +8,8 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ApiClient {
-//    private static final String BASE_URL = "http://192.168.0.213:8000/"; // 회사
-    // private static final String BASE_URL = "http://192.168.0.14:8000/"; // 집
-     private static final String BASE_URL = "https://docker.dhdx.kr/senior/";
+     private static final String BASE_URL = "https://docker.dhdx.kr/senioredudev/";
+//    private static final String BASE_URL = "http://192.168.0.17:9000/";
     private static Retrofit retrofit;
 
     public static Retrofit getRetrofit() {
@@ -38,4 +37,5 @@ public class ApiClient {
     public static AuthApi authApi() {
         return getRetrofit().create(AuthApi.class);
     }
+    public static MemberApi memberApi() { return getRetrofit().create(MemberApi.class); }
 }

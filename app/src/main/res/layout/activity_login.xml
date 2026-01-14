@@ -121,10 +121,20 @@
         app:layout_constraintStart_toStartOf="parent">
 
         <Button
+            android:id="@+id/joinBtn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#389246"
+            android:fontFamily="@font/pretendard_regular"
+            android:text="회원가입"
+            android:textColor="@color/white" />
+
+        <Button
             android:id="@+id/faceAuthBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="#e83736"
+            android:layout_marginTop="8dp"
             android:fontFamily="@font/pretendard_regular"
             android:text="@string/login_with_face"
             android:textColor="@color/white"

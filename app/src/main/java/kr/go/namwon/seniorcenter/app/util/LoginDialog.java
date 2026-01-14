@@ -105,8 +105,12 @@ public class LoginDialog extends Dialog {
 
                         @Override
                         public void onFailure(Call<JsonObject> call, Throwable t) {
+                            loginBtn.setEnabled(true);
                             loadingDialog.dismiss();
                             Log.e(TAG, "Network failure: " + t.getMessage(), t);
+
+                            Toast.makeText(getContext(), "로그인을 할 수 없습니다. 서버를 확인해주세요.", Toast.LENGTH_SHORT).show();
+                            dismiss();
                         }
                     });
         });

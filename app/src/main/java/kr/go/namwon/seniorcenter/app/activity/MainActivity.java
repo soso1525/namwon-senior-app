@@ -2,14 +2,18 @@ package kr.go.namwon.seniorcenter.app.activity;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Dialog;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Message;
 import android.provider.Settings;
 import android.util.Log;
 import android.webkit.ConsoleMessage;
 import android.webkit.GeolocationPermissions;
+import android.webkit.JsResult;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -25,6 +29,7 @@ import androidx.core.content.ContextCompat;
 
 import com.google.gson.JsonObject;
 
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,6 +66,10 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
     private ActivityResultLauncher<String[]> permissionLauncher;
 
+    //private String FRONT_URL = "https://cozy-bit.netlify.app/";
+    //private String FRONT_URL = "https://namwonecareappboda.netlify.app/";
+    private String FRONT_URL = "https://namwon-senior-web.netlify.app/home/uaHome/";
+
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,6 +92,8 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         webSettings.setLoadWithOverviewMode(true);
         webSettings.setUseWideViewPort(true);
         webSettings.setMediaPlaybackRequiresUserGesture(false);
+        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+        webSettings.setSupportMultipleWindows(true);
         webSettings.setGeolocationEnabled(true);
 
         webView.addJavascriptInterface(new JsBridge(this, this), "AndroidBridge");
@@ -91,6 +102,68 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
             public boolean onConsoleMessage(ConsoleMessage cm) {
                 Log.d("WebViewConsole", cm.message());
                 return super.onConsoleMessage(cm);
+            }
+
+            @Override
+            public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
+                new AlertDialog.Builder(view.getContext())
+                        .setMessage(message)
+                        .setPositiveButton("OK", (d, w) -> result.confirm())
+                        .setCancelable(false)
+                        .show();
+                return true;
+            }
+
+            @Override
+            public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
+                // 팝업용 WebView 만들기
+                WebView popupWebView = new WebView(view.getContext());
+
+                WebSettings ps = popupWebView.getSettings();
+                ps.setJavaScriptEnabled(true);
+                ps.setDomStorageEnabled(true);
+                ps.setJavaScriptCanOpenWindowsAutomatically(true);
+                ps.setSupportMultipleWindows(true);
+
+                // 팝업을 Dialog로 표시
+                final Dialog dialog = new Dialog(view.getContext());
+                dialog.setContentView(popupWebView);
+                dialog.setCancelable(true);
+                dialog.show();
+
+                // 팝업 내부 링크 처리
+                popupWebView.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                        String url = request.getUrl().toString();
+                        return handleExternalUrl(view, url);
+                    }
+
+                    @Override
+                    public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                        return handleExternalUrl(view, url);
+                    }
+                });
+
+
+                // 팝업 닫기(window.close) 처리
+                popupWebView.setWebChromeClient(new WebChromeClient() {
+                    @Override
+                    public void onCloseWindow(WebView window) {
+                        try {
+                            window.destroy();
+                        } catch (Exception ignored) {
+                        }
+                        dialog.dismiss();
+                    }
+                });
+
+                // ⭐️ window.open으로 생성된 WebView를 시스템에 연결 (핵심)
+                WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+                transport.setWebView(popupWebView);
+                resultMsg.sendToTarget();
+
+                return true;
             }
 
             // ★ getUserMedia 권한 처리 (카메라/마이크)
@@ -161,6 +234,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         });
 
         webView.setWebViewClient(new WebViewClient() {
+
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
@@ -173,7 +247,26 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                if (!request.isForMainFrame()) return false;
+
                 String url = request.getUrl().toString();
+
+                // ✅ 1) intent:// / market:// / 커스텀스킴 처리
+                if (handleExternalUrl(view, url)) return true;
+
+                // ✅ 2) 기존 로직 유지
+                if (url.contains("https://www.barodoctor.com/")) {
+                    view.loadUrl("https://bit-senior.netlify.app/home/uaHome/");
+                    return true;
+                }
+
+                return false;
+            }
+
+            // (구형 단말용)
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (handleExternalUrl(view, url)) return true;
 
                 if (url.contains("https://www.barodoctor.com/")) {
                     view.loadUrl("https://bit-senior.netlify.app/home/uaHome/");
@@ -184,8 +277,8 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
             }
         });
 
-        webView.loadUrl("https://bit-senior.netlify.app/home/uaHome/");
-//        webView.loadUrl("https://smart-sc-senior-front.vercel.app/login");
+
+        webView.loadUrl(FRONT_URL);
         binding.swipeRefreshLayout.setOnRefreshListener(() -> webView.reload());
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -199,6 +292,60 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                 }
             }
         });
+    }
+
+    private boolean handleExternalUrl(WebView view, String url) {
+        try {
+            if (url.startsWith("intent://")) {
+                Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+
+                // package 없으면 강제 지정(너가 확인한 값)
+                if (intent.getPackage() == null) {
+                    intent.setPackage("zone.cloudboda");
+                }
+
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                try {
+                    // ✅ 1) 일단 실행부터!
+                    startActivity(intent);
+                    return true;
+                } catch (ActivityNotFoundException notFound) {
+                    // ✅ 2) 진짜 없을 때만 fallback
+                    String fallbackUrl = intent.getStringExtra("browser_fallback_url");
+                    if (fallbackUrl != null && !fallbackUrl.isEmpty()) {
+                        view.loadUrl(fallbackUrl);
+                        return true;
+                    }
+
+                    String pkg = intent.getPackage();
+                    if (pkg != null && !pkg.isEmpty()) {
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                        return true;
+                    }
+
+                    return true;
+                }
+            }
+
+            if (url.startsWith("market://")) {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                return true;
+            }
+
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                return true;
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "handleExternalUrl error: " + url, e);
+            return true;
+        }
+        return false;
     }
 
     private boolean has(String perm) {
