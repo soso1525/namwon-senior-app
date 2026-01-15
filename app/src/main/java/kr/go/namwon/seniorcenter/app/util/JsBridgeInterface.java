@@ -4,5 +4,7 @@ public interface JsBridgeInterface {
     void logout();
     void registerFace();
 
-    void updateToken(String accessToken);
+    void tokenUpdated(String accessToken);
+
+    void tokenExpired();
 }

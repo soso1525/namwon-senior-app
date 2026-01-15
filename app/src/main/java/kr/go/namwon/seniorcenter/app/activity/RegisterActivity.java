@@ -1,6 +1,5 @@
 package kr.go.namwon.seniorcenter.app.activity;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
@@ -14,16 +13,13 @@ import com.metsakuur.ufacedetector.model.UFaceProcessingMode;
 import com.metsakuur.ufacedetector.model.UFaceResult;
 import com.metsakuur.ufacedetector.model.UFaceStateModel;
 
+import kr.go.namwon.seniorcenter.app.AppConfig;
 import kr.go.namwon.seniorcenter.app.R;
-import kr.go.namwon.seniorcenter.app.databinding.ActivityLoginBinding;
 import kr.go.namwon.seniorcenter.app.databinding.ActivityRegisterBinding;
 import kr.go.namwon.seniorcenter.app.model.FaceRegisterRequest;
-import kr.go.namwon.seniorcenter.app.model.FaceVerifyRequest;
 import kr.go.namwon.seniorcenter.app.retrofit.ApiClient;
 import kr.go.namwon.seniorcenter.app.util.ImageUtil;
-import kr.go.namwon.seniorcenter.app.util.LoadingDialog;
-import kr.go.namwon.seniorcenter.app.util.LoginDialog;
-import kr.go.namwon.seniorcenter.app.util.PrefsHelper;
+import kr.go.namwon.seniorcenter.app.dialog.LoadingDialog;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -134,7 +130,7 @@ public class RegisterActivity extends BaseAppCompatActivity implements UFaceDete
         // 눈깜빡임 사용 여부
         uFaceDetector.setUseEyeBlink(true);
         // 디텍터 초기화
-        uFaceDetector.initDetector(this, "4F5A46527631008115020932123D9CB2313497831B23111BC957CED78F1C6F8731D6A7BEB6ED3B585082B77FC7717F04E081C3B39C14E37F");
+        uFaceDetector.initDetector(this, AppConfig.licenseKey());
     }
 
     /**

@@ -2,14 +2,13 @@ package kr.go.namwon.seniorcenter.app.retrofit;
 
 import java.util.concurrent.TimeUnit;
 
+import kr.go.namwon.seniorcenter.app.AppConfig;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ApiClient {
-     private static final String BASE_URL = "https://docker.dhdx.kr/senioredudev/";
-//    private static final String BASE_URL = "http://192.168.0.17:9000/";
     private static Retrofit retrofit;
 
     public static Retrofit getRetrofit() {
@@ -26,7 +25,7 @@ public class ApiClient {
                     .build();
 
             retrofit = new Retrofit.Builder()
-                    .baseUrl(BASE_URL)
+                    .baseUrl(AppConfig.baseURL())
                     .client(okHttpClient)
                     .addConverterFactory(GsonConverterFactory.create())
                     .build();

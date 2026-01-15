@@ -6,6 +6,7 @@ import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Message;
@@ -20,27 +21,27 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
 
-import com.google.gson.JsonObject;
-
-import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import kr.go.namwon.seniorcenter.app.AppConfig;
 import kr.go.namwon.seniorcenter.app.databinding.ActivityMainBinding;
-import kr.go.namwon.seniorcenter.app.retrofit.ApiClient;
 import kr.go.namwon.seniorcenter.app.util.JsBridge;
 import kr.go.namwon.seniorcenter.app.util.JsBridgeInterface;
 import kr.go.namwon.seniorcenter.app.util.PrefsHelper;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
 public class MainActivity extends BaseAppCompatActivity implements JsBridgeInterface {
 
@@ -66,10 +67,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
     private ActivityResultLauncher<String[]> permissionLauncher;
 
-    //private String FRONT_URL = "https://cozy-bit.netlify.app/";
-    //private String FRONT_URL = "https://namwonecareappboda.netlify.app/";
-    private String FRONT_URL = "https://namwon-senior-web.netlify.app/home/uaHome/";
-
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,8 +75,10 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        accessToken = getIntent().getStringExtra("accessToken");
-        refreshToken = getIntent().getStringExtra("refreshToken");
+        accessToken = getIntent().getStringExtra(AppConfig.tokenAccessKey());
+        refreshToken = getIntent().getStringExtra(AppConfig.tokenRefreshKey());
+
+        PrefsHelper.putString(AppConfig.tokenAccessKey(), accessToken);
 
         initPermissionLauncher();
         requestLocationAndMicIfNeeded(); // 최초 일괄 점검
@@ -236,13 +235,18 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         webView.setWebViewClient(new WebViewClient() {
 
             @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                binding.swipeRefreshLayout.setRefreshing(false);
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
 
                 if (url.contains("/home/uaHome")) {
                     initToken();
                 }
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                binding.swipeRefreshLayout.setRefreshing(false);
             }
 
             @Override
@@ -256,7 +260,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
                 // ✅ 2) 기존 로직 유지
                 if (url.contains("https://www.barodoctor.com/")) {
-                    view.loadUrl("https://bit-senior.netlify.app/home/uaHome/");
+                    view.loadUrl(AppConfig.frontURL());
                     return true;
                 }
 
@@ -269,7 +273,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                 if (handleExternalUrl(view, url)) return true;
 
                 if (url.contains("https://www.barodoctor.com/")) {
-                    view.loadUrl("https://bit-senior.netlify.app/home/uaHome/");
+                    view.loadUrl(AppConfig.frontURL());
                     return true;
                 }
 
@@ -278,7 +282,20 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         });
 
 
-        webView.loadUrl(FRONT_URL);
+//        Set<String> allowedOriginRules = new HashSet<>();
+//        allowedOriginRules.add("https://namwon-senior-web.netlify.app");
+//        allowedOriginRules.add("https://ecare.namwon.go.kr");
+//
+//        String js = "localStorage.setItem('logintool', 'basic');"
+//                + "localStorage.setItem('userJwt', '" + accessToken + "');"
+//                + "localStorage.setItem('refreshJwt', '" + refreshToken + "');";
+//
+//
+//        WebViewCompat.addDocumentStartJavaScript(
+//                webView, js, allowedOriginRules
+//        );
+
+        webView.loadUrl(AppConfig.frontURL());
         binding.swipeRefreshLayout.setOnRefreshListener(() -> webView.reload());
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -460,11 +477,14 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                 "취소",
                 (dialogInterface, i) -> dialogInterface.dismiss(),
                 "로그아웃", (dialogInterface, i) -> {
-                    PrefsHelper.clear();
                     String js = "localStorage.setItem('logintool', 'basic');"
                             + "localStorage.setItem('userJwt', '');"
                             + "localStorage.setItem('refreshJwt', '');";
+
                     webView.evaluateJavascript(js, null);
+
+                    Toast.makeText(this, "로그아웃 되었습니다.", Toast.LENGTH_SHORT).show();
+
                     Intent intent = new Intent(this, LoginActivity.class);
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
@@ -479,8 +499,18 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     }
 
     @Override
-    public void updateToken(String accessToken) {
-        PrefsHelper.putString("accessToken", accessToken);
+    public void tokenUpdated(String accessToken) {
+        PrefsHelper.putString(AppConfig.tokenAccessKey(), accessToken);
+    }
+
+    @Override
+    public void tokenExpired() {
+        Toast.makeText(this, "세션이 만료되었습니다. 다시 로그인해주세요", Toast.LENGTH_SHORT).show();
+
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finishAffinity();
     }
 
     @Override

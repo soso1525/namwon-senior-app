@@ -1,4 +1,4 @@
-package kr.go.namwon.seniorcenter.app.util;
+package kr.go.namwon.seniorcenter.app.dialog;
 
 import android.app.Dialog;
 import android.content.Context;
@@ -13,11 +13,13 @@ import android.widget.Toast;
 
 import com.google.gson.JsonObject;
 
+import kr.go.namwon.seniorcenter.app.AppConfig;
 import kr.go.namwon.seniorcenter.app.R;
 import kr.go.namwon.seniorcenter.app.activity.MainActivity;
-import kr.go.namwon.seniorcenter.app.databinding.DialogPhoneLoginBinding;
 import kr.go.namwon.seniorcenter.app.model.LoginRequest;
 import kr.go.namwon.seniorcenter.app.retrofit.ApiClient;
+import kr.go.namwon.seniorcenter.app.util.PrefsHelper;
+import kr.go.namwon.seniorcenter.app.util.StringUtil;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -60,7 +62,6 @@ public class LoginDialog extends Dialog {
             loadingDialog.show();
             loginBtn.setEnabled(false);
 
-            LoginRequest request = new LoginRequest(StringUtil.formatPhoneNumber(phone), password);
             ApiClient.authApi()
                     .login(StringUtil.formatPhoneNumber(phone), password)
                     .enqueue(new Callback<JsonObject>() {
@@ -72,19 +73,15 @@ public class LoginDialog extends Dialog {
 
                             if (response.isSuccessful()) {
                                 JsonObject res = response.body();
-                                Log.e(TAG, "response body: " + res);
 
                                 if (res != null) {
-                                    String accessToken = res.get(Constants.TokenAccessKey).getAsString();
-                                    String refreshToken = res.get(Constants.TokenRefreshKey).getAsString();
-
-                                    PrefsHelper.putString("accessToken", accessToken);
-                                    PrefsHelper.putString("refreshToken", refreshToken);
+                                    String accessToken = res.get(AppConfig.tokenAccessKey()).getAsString();
+                                    String refreshToken = res.get(AppConfig.tokenRefreshKey()).getAsString();
 
                                     Intent intent = new Intent(getContext(), MainActivity.class);
                                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                    intent.putExtra("accessToken", accessToken);
-                                    intent.putExtra("refreshToken", refreshToken);
+                                    intent.putExtra(AppConfig.tokenAccessKey(), accessToken);
+                                    intent.putExtra(AppConfig.tokenRefreshKey(), refreshToken);
                                     getContext().startActivity(intent);
                                     dismiss();
                                 } else {
@@ -107,7 +104,7 @@ public class LoginDialog extends Dialog {
                         public void onFailure(Call<JsonObject> call, Throwable t) {
                             loginBtn.setEnabled(true);
                             loadingDialog.dismiss();
-                            Log.e(TAG, "Network failure: " + t.getMessage(), t);
+                            Log.e(TAG, "Phone authentication failed: " + t.getMessage(), t);
 
                             Toast.makeText(getContext(), "로그인을 할 수 없습니다. 서버를 확인해주세요.", Toast.LENGTH_SHORT).show();
                             dismiss();

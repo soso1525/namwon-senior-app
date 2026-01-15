@@ -5,7 +5,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.DialogInterface;
 
-import kr.go.namwon.seniorcenter.app.util.CustomDialog;
+import kr.go.namwon.seniorcenter.app.dialog.CustomDialog;
 
 public class BaseAppCompatActivity extends AppCompatActivity {
 

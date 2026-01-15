@@ -13,8 +13,13 @@ public class JsBridge {
     }
 
     @JavascriptInterface
-    public void updateToken(String accessToken) {
-        jsBridgeInterface.updateToken(accessToken);
+    public void tokenUpdated(String accessToken) {
+        jsBridgeInterface.tokenUpdated(accessToken);
+    }
+
+    @JavascriptInterface
+    public void tokenExpired() {
+        jsBridgeInterface.tokenExpired();
     }
 
     @JavascriptInterface

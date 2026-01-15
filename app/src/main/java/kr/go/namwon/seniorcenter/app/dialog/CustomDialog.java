@@ -1,4 +1,4 @@
-package kr.go.namwon.seniorcenter.app.util;
+package kr.go.namwon.seniorcenter.app.dialog;
 
 import android.app.Dialog;
 import android.content.Context;

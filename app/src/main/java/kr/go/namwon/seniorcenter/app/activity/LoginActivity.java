@@ -13,14 +13,14 @@ import com.metsakuur.ufacedetector.model.UFaceGeometryModel;
 import com.metsakuur.ufacedetector.model.UFaceResult;
 import com.metsakuur.ufacedetector.model.UFaceStateModel;
 
+import kr.go.namwon.seniorcenter.app.AppConfig;
 import kr.go.namwon.seniorcenter.app.R;
 import kr.go.namwon.seniorcenter.app.databinding.ActivityLoginBinding;
 import kr.go.namwon.seniorcenter.app.model.FaceVerifyRequest;
 import kr.go.namwon.seniorcenter.app.retrofit.ApiClient;
-import kr.go.namwon.seniorcenter.app.util.Constants;
 import kr.go.namwon.seniorcenter.app.util.ImageUtil;
-import kr.go.namwon.seniorcenter.app.util.LoadingDialog;
-import kr.go.namwon.seniorcenter.app.util.LoginDialog;
+import kr.go.namwon.seniorcenter.app.dialog.LoadingDialog;
+import kr.go.namwon.seniorcenter.app.dialog.LoginDialog;
 import kr.go.namwon.seniorcenter.app.util.PrefsHelper;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -35,8 +35,6 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     private LoginDialog loginDialog;
     private UFaceDetector uFaceDetector = null;
 
-    // 좌우 고개돌림 체크 완료
-    boolean isYawFinish = true;
     private UFaceResult result = null;
     boolean isProcessing = false;
 
@@ -83,20 +81,16 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                             }
 
                             JsonObject res = response.body();
-                            Log.e(TAG, res.toString());
                             int resCode = res.get("code").getAsInt();
                             if (resCode == 0) {
                                 JsonObject resultVO = res.get("resultVO").getAsJsonObject();
-                                String accessToken = resultVO.get(Constants.TokenAccessKey).getAsString();
-                                String refreshToken = resultVO.get(Constants.TokenRefreshKey).getAsString();
-
-                                PrefsHelper.putString("accessToken", accessToken);
-                                PrefsHelper.putString("refreshToken", refreshToken);
+                                String accessToken = resultVO.get(AppConfig.tokenAccessKey()).getAsString();
+                                String refreshToken = resultVO.get(AppConfig.tokenRefreshKey()).getAsString();
 
                                 Intent intent = new Intent(getBaseContext(), MainActivity.class);
                                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                intent.putExtra("accessToken", accessToken);
-                                intent.putExtra("refreshToken", refreshToken);
+                                intent.putExtra(AppConfig.tokenAccessKey(), accessToken);
+                                intent.putExtra(AppConfig.tokenRefreshKey(), refreshToken);
                                 startActivity(intent);
                                 finishAffinity();
                                 return;
@@ -139,9 +133,9 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                             loadingDialog.dismiss();
                             binding.faceAuthBtn.setEnabled(true);
 
-                            openAlertView("로그인을 할 수 없습니다. 서버를 확인해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
+                            openAlertView(getString(R.string.login_fail_server_error), (dialogInterface, i) -> dialogInterface.dismiss());
 
-                            Log.e(TAG, "Network failure: " + t.getMessage(), t);
+                            Log.e(TAG, "Face authentication failed: " + t.getMessage(), t);
                         }
                     });
         });
@@ -157,7 +151,7 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
         // 눈깜빡임 사용 여부
         uFaceDetector.setUseEyeBlink(false);
         // 디텍터 초기화
-        uFaceDetector.initDetector(this, "4F5A46527631008115020932123D9CB2313497831B23111BC957CED78F1C6F8731D6A7BEB6ED3B585082B77FC7717F04E081C3B39C14E37F");
+        uFaceDetector.initDetector(this, AppConfig.licenseKey());
     }
 
     /**
@@ -249,16 +243,6 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
 
     @Override
     public void uFaceDetector(UFaceDetector detector, UFaceResult result) {
-        // 고개 돌림 성공 체크 (사용 안할 시 true가 기본값이므로 통과)
-//        if (isYawFinish) {
-//            this.result = result;
-//        } else {
-//            // 해당 리스너로 결과괎이 수신되면 디텍터가 검출을 멈추기 때문에 resumeDetector를 호출해야 디텍터가 다시 동작 함
-//            // 고개 돌림 아직 진행 중이므로, 고개 돌림 프로세스 다시 진행하도록 processingMode.GEOMETRY_MODE 로 변경
-//            uFaceDetector.setProcessingMode(UFaceProcessingMode.GEOMETRY_MODE);
-//            uFaceDetector.resumeDetector();
-//        }
-
         if (!isProcessing)
             this.result = result;
     }

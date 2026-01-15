@@ -7,7 +7,7 @@ android {
     namespace = "kr.go.namwon.seniorcenter.app"
     compileSdk = 34
 
-    defaultConfig {
+    defaultConfig { // 공통 configuration
         applicationId = "kr.go.namwon.seniorcenter.app"
         minSdk = 23
         targetSdk = 34
@@ -15,9 +15,22 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField(
+            "String",
+            "LICENSE_KEY",
+            "\"4F5A46527631008115020932123D9CB2313497831B23111BC957CED78F1C6F8731D6A7BEB6ED3B585082B77FC7717F04E081C3B39C14E37F\""
+        )
+        buildConfigField("String", "TOKEN_ACCESS_KEY", "\"bizportal-access-token\"")
+        buildConfigField("String", "TOKEN_REFRESH_KEY", "\"bizportal-refresh-token\"")
+        buildConfigField("String", "BASE_URL", "\"https://ecare.namwon.go.kr/be/\"")
+        buildConfigField("String", "FRONT_URL", "\"https://ecare.namwon.go.kr/home/uaHome\"")
+//        buildConfigField("String", "BASE_URL", "\"https://docker.dhdx.kr/senioredudev/\"")
+//        buildConfigField("String", "FRONT_URL", "\"https://namwon-senior-web.netlify.app/home/uaHome/\"")
     }
 
     buildTypes {
+
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -30,12 +43,13 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
-    kotlinOptions {
+    kotlinOptions { // Gradle 스크립트가 Kotlin 이므로 설정 유지.
         jvmTarget = "1.8"
     }
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 
@@ -53,6 +67,9 @@ dependencies {
 
     implementation(files("libs/UFaceTotpClient1.0.0.aar"))
     implementation(files("libs/UFaceDetectorLemon1.0.3.aar"))
+
+    // WebKit
+    implementation("androidx.webkit:webkit:1.10.0+")
 
     //retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
