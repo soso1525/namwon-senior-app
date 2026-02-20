@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "111313378141",
+    "project_id": "namwonecare",
+    "storage_bucket": "namwonecare.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:111313378141:android:61a6815fe3c4508d9ba6b4",
+        "android_client_info": {
+          "package_name": "kr.go.namwon.seniorcenter.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFxobU5D_PM_Kso1zrzjpIWFBeO58Swks"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

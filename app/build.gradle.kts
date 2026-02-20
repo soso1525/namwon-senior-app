@@ -83,6 +83,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.swiperefreshlayout)
+    implementation(libs.firebase.messaging)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -90,7 +91,7 @@ dependencies {
     implementation(files("libs/UFaceTotpClient1.0.0.aar"))
     implementation(files("libs/UFaceDetectorLemon1.0.3.aar"))
 
-    implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
+    implementation(platform("com.google.firebase:firebase-bom:34.9.0"))
 
     // WebKit
     implementation("androidx.webkit:webkit:1.10.0+")

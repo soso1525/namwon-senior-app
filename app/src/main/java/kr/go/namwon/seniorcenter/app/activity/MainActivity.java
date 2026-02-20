@@ -52,8 +52,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     private String refreshToken;
 
     private static final String[] PERMS = {
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.CAMERA
     };
@@ -61,9 +59,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     // ★ WebView 권한 요청 대기 핸들
     private PermissionRequest pendingMediaPermissionRequest;
     private String[] pendingMediaResources;
-
-    private GeolocationPermissions.Callback pendingGeoCallback;
-    private String pendingGeoOrigin;
 
     private ActivityResultLauncher<String[]> permissionLauncher;
 
@@ -81,7 +76,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         PrefsHelper.putString(AppConfig.tokenAccessKey(), accessToken);
 
         initPermissionLauncher();
-        requestLocationAndMicIfNeeded(); // 최초 일괄 점검
+        requestMicIfNeeded(); // 최초 일괄 점검
 
         webView = binding.webView;
 
@@ -93,7 +88,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         webSettings.setMediaPlaybackRequiresUserGesture(false);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         webSettings.setSupportMultipleWindows(true);
-        webSettings.setGeolocationEnabled(true);
 
         webView.addJavascriptInterface(new JsBridge(this, this), "AndroidBridge");
         webView.setWebChromeClient(new WebChromeClient() {
@@ -203,27 +197,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                     if (!allow.isEmpty()) request.grant(allow.toArray(new String[0]));
                     else request.deny();
                 });
-            }
-
-            // ★ HTML5 Geolocation 권한 처리
-            @Override
-            public void onGeolocationPermissionsShowPrompt( // WebView에서 위치 권한 요청 들어오는 함수
-                                                            String origin, GeolocationPermissions.Callback callback
-            ) {
-                boolean fine = has(Manifest.permission.ACCESS_FINE_LOCATION);
-                boolean coarse = has(Manifest.permission.ACCESS_COARSE_LOCATION);
-
-                if (fine || coarse) {
-                    callback.invoke(origin, true, false);
-                } else {
-                    // 런타임 권한 먼저 요청 → 콜백에서 invoke 처리
-                    pendingGeoCallback = callback;
-                    pendingGeoOrigin = origin;
-                    permissionLauncher.launch(new String[]{
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                    });
-                }
             }
 
             @Override
@@ -376,10 +349,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                     // 일부 단말/경로에서 result map이 비어있을 수 있으므로, 최종 상태는 직접 재확인
                     boolean cam = has(Manifest.permission.CAMERA);
                     boolean mic = has(Manifest.permission.RECORD_AUDIO);
-                    boolean fine = has(Manifest.permission.ACCESS_FINE_LOCATION);
-                    boolean coarse = has(Manifest.permission.ACCESS_COARSE_LOCATION);
-
-//                    dumpPermissions(); // 디버깅용
 
                     // ★ 대기 중인 getUserMedia 처리
                     if (pendingMediaPermissionRequest != null && pendingMediaResources != null) {
@@ -402,16 +371,8 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                         pendingMediaResources = null;
                     }
 
-                    // ★ 대기 중인 Geolocation 처리
-                    if (pendingGeoCallback != null && pendingGeoOrigin != null) {
-                        boolean hasLocation = fine || coarse;
-                        pendingGeoCallback.invoke(pendingGeoOrigin, hasLocation, false);
-                        pendingGeoCallback = null;
-                        pendingGeoOrigin = null;
-                    }
-
                     // 안내 로그
-                    if ((fine || coarse) && mic && cam) {
+                    if (mic && cam) {
                         onPermissionsGranted();
                     } else {
                         onPermissionsDenied();
@@ -420,20 +381,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         );
     }
 
-    private void dumpPermissions() {
-        String[] perms = {
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-        };
-        for (String p : perms) {
-            int s = ContextCompat.checkSelfPermission(this, p);
-            Log.d("PermDump", p + " = " + (s == PackageManager.PERMISSION_GRANTED ? "GRANTED" : "DENIED"));
-        }
-    }
-
-    public void requestLocationAndMicIfNeeded() {
+    public void requestMicIfNeeded() {
         List<String> need = new ArrayList<>();
         for (String p : PERMS) {
             if (!has(p)) need.add(p);
@@ -446,13 +394,13 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     }
 
     private void onPermissionsGranted() {
-        Log.d(TAG, "카메라/마이크/위치 권한 허용됨.");
+        Log.d(TAG, "카메라/마이크 권한 허용됨.");
     }
 
     private void onPermissionsDenied() {
         new AlertDialog.Builder(this)
                 .setTitle("권한 필요")
-                .setMessage("서비스를 사용하려면 카메라, 마이크, 위치 권한이 필요합니다.\n설정에서 권한을 허용해주세요.")
+                .setMessage("서비스를 사용하려면 카메라, 마이크 권한이 필요합니다.\n설정에서 권한을 허용해주세요.")
                 .setPositiveButton("설정 열기", (d, w) -> {
                     Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                     i.setData(Uri.fromParts("package", getPackageName(), null));
@@ -516,10 +464,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // ★ pending 정리
         pendingMediaPermissionRequest = null;
         pendingMediaResources = null;
-        pendingGeoCallback = null;
-        pendingGeoOrigin = null;
     }
 }
