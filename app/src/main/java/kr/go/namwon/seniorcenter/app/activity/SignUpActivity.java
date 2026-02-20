@@ -1,12 +1,16 @@
 package kr.go.namwon.seniorcenter.app.activity;
 
 import android.app.DatePickerDialog;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.RadioButton;
 import android.widget.Toast;
+
+import androidx.activity.OnBackPressedCallback;
 
 import com.google.gson.JsonObject;
 
@@ -36,7 +40,13 @@ public class SignUpActivity extends BaseAppCompatActivity {
         binding = ActivityJoinBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        binding.cancelBtn.setOnClickListener(v -> finish());
+        binding.cancelBtn.setOnClickListener(v -> {
+            if (isKeyboardVisible()) {
+                hideKeyboard();
+            } else {
+                finish();
+            }
+        });
         binding.signUpBtn.setOnClickListener(v -> signUp());
 
         centerSpinnerAdapter = new ArrayAdapter<>(
@@ -53,12 +63,15 @@ public class SignUpActivity extends BaseAppCompatActivity {
                     @Override
                     public void onResponse(Call<CenterResponse> call, Response<CenterResponse> response) {
                         binding.loadingLayout.setVisibility(View.GONE);
-                        List<Center> centerList = response.body().getResultVO();
 
-                        centerSpinnerAdapter.clear();
-                        centerSpinnerAdapter.add(new Center(0, "경로당 선택", null));
-                        centerSpinnerAdapter.addAll(centerList);
-                        centerSpinnerAdapter.notifyDataSetChanged();
+                        if (response.isSuccessful()) {
+                            List<Center> centerList = response.body().getResultVO();
+
+                            centerSpinnerAdapter.clear();
+                            centerSpinnerAdapter.add(new Center(0, "경로당 선택", null));
+                            centerSpinnerAdapter.addAll(centerList);
+                            centerSpinnerAdapter.notifyDataSetChanged();
+                        }
                     }
 
                     @Override
@@ -69,6 +82,25 @@ public class SignUpActivity extends BaseAppCompatActivity {
 
         binding.phoneEt.addTextChangedListener(new PhoneHyphenTextWatcher(binding.phoneEt));
         binding.birthdateEt.setOnClickListener(v -> showDatePicker());
+    }
+
+    private boolean isKeyboardVisible() {
+        View rootView = getWindow().getDecorView().getRootView();
+        Rect r = new Rect();
+        rootView.getWindowVisibleDisplayFrame(r);
+        int screenHeight = rootView.getHeight();
+        int keypadHeight = screenHeight - r.bottom;
+
+        return keypadHeight > screenHeight * 0.15;
+    }
+
+    private void hideKeyboard() {
+        View view = getCurrentFocus();
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+            view.clearFocus();
+        }
     }
 
     private void showDatePicker() {

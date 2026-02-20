@@ -188,6 +188,13 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
         });
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        isDetectFace(false);
+    }
+
     private void initDetector() {
         // 디렉터 초기화
         uFaceDetector = new UFaceDetector();
