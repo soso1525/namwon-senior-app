@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
@@ -49,6 +51,44 @@ public class LoginDialog extends Dialog {
         loginBtn = findViewById(R.id.loginBtn);
         cancelBtn = findViewById(R.id.cancelBtn);
 
+        phoneEt.addTextChangedListener(new TextWatcher() {
+
+            private boolean isFormatting;
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
+                if (isFormatting) return;
+
+                isFormatting = true;
+
+                String input = s.toString().replace("-", ""); // - 제거
+
+                String formatted = "";
+
+                if (input.length() < 4) {
+                    formatted = input;
+                } else if (input.length() < 8) {
+                    formatted = input.substring(0, 3) + "-" + input.substring(3);
+                } else {
+                    formatted = input.substring(0, 3) + "-" +
+                            input.substring(3, 7) + "-" +
+                            input.substring(7, Math.min(11, input.length()));
+                }
+
+                phoneEt.setText(formatted);
+                phoneEt.setSelection(formatted.length());
+
+                isFormatting = false;
+            }
+        });
+
         loginBtn.setOnClickListener(v -> {
 
             String phone = phoneEt.getText().toString();
@@ -63,7 +103,7 @@ public class LoginDialog extends Dialog {
             loginBtn.setEnabled(false);
 
             ApiClient.authApi()
-                    .login(StringUtil.formatPhoneNumber(phone), password)
+                    .login(phone, password)
                     .enqueue(new Callback<JsonObject>() {
                         @Override
                         public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
