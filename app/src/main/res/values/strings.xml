@@ -18,6 +18,6 @@
 
     <string name="camera_front">얼굴을 가이드라인에 맞춰 주세요</string>
 
-    <string name="login_fail_server_error">로그인을 할 수 없습니다. 서버를 확인해주세요.</string>
+    <string name="login_fail_server_error">로그인을 할 수 없습니다.\n서버를 확인해주세요.</string>
 
 </resources>

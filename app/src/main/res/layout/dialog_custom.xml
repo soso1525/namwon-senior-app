@@ -35,7 +35,7 @@
                 android:layout_gravity="center"
                 android:layout_marginTop="8dp"
                 android:gravity="center_horizontal"
-                android:textColor="@color/font_red"
+                android:textColor="@color/red"
                 android:textSize="16dp"
                 tools:text="오류코드 : 00000" />
 

@@ -1,8 +1,14 @@
 package kr.go.namwon.seniorcenter.app.activity;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.Log;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.google.gson.JsonObject;
@@ -12,6 +18,9 @@ import com.metsakuur.ufacedetector.model.UFaceError;
 import com.metsakuur.ufacedetector.model.UFaceGeometryModel;
 import com.metsakuur.ufacedetector.model.UFaceResult;
 import com.metsakuur.ufacedetector.model.UFaceStateModel;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import kr.go.namwon.seniorcenter.app.AppConfig;
 import kr.go.namwon.seniorcenter.app.R;
@@ -30,13 +39,10 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     public static final String TAG = "TAG_LoginActivity";
 
     private ActivityLoginBinding binding;
-
     private LoadingDialog loadingDialog;
     private LoginDialog loginDialog;
     private UFaceDetector uFaceDetector = null;
-
     private UFaceResult result = null;
-    boolean isProcessing = false;
 
 
     @Override
@@ -50,7 +56,7 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
 
         loadingDialog = new LoadingDialog(LoginActivity.this);
         loginDialog = new LoginDialog(LoginActivity.this);
-        loginDialog.setCancelable(false);
+
         initDetector();
 
         binding.joinBtn.setOnClickListener(view -> startActivity(new Intent(this, SignUpActivity.class)));
@@ -61,83 +67,124 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                 return;
             }
 
-            isProcessing = true;
+            uFaceDetector.pauseDetector();
             loadingDialog.show();
             binding.faceAuthBtn.setEnabled(false);
 
-            FaceVerifyRequest request = new FaceVerifyRequest(ImageUtil.bitmapToBase64(result.getFullImage()));
-            ApiClient.authApi()
-                    .verify(request)
-                    .enqueue(new Callback<JsonObject>() {
-                        @Override
-                        public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
-                            isProcessing = false;
-                            loadingDialog.dismiss();
-                            binding.faceAuthBtn.setEnabled(true);
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            executor.execute(() -> {
 
-                            if (!response.isSuccessful()) {
-                                openAlertView("얼굴을 인식할 수 없습니다.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                return;
-                            }
+                Bitmap resized = ImageUtil.resize(result.getCropImage(), 720);
+                String b64 = ImageUtil.bitmapToBase64(resized);
 
-                            JsonObject res = response.body();
-                            int resCode = res.get("code").getAsInt();
-                            if (resCode == 0) {
-                                JsonObject resultVO = res.get("resultVO").getAsJsonObject();
-                                String accessToken = resultVO.get(AppConfig.tokenAccessKey()).getAsString();
-                                String refreshToken = resultVO.get(AppConfig.tokenRefreshKey()).getAsString();
+                runOnUiThread(() -> {
+                    if (isFinishing() || isDestroyed()) return;
 
-                                Intent intent = new Intent(getBaseContext(), MainActivity.class);
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                intent.putExtra(AppConfig.tokenAccessKey(), accessToken);
-                                intent.putExtra(AppConfig.tokenRefreshKey(), refreshToken);
-                                startActivity(intent);
-                                finishAffinity();
-                                return;
-                            }
+                    FaceVerifyRequest request = new FaceVerifyRequest(b64);
+                    ApiClient.authApi().verify(request)
+                            .enqueue(new Callback<JsonObject>() {
+                                @Override
+                                public void onResponse(Call<JsonObject> call, Response<JsonObject> response) {
+                                    loadingDialog.dismiss();
+                                    binding.faceAuthBtn.setEnabled(true);
 
-                            switch (resCode) {
-                                case 28001:
-                                    openAlertView(getString(R.string.unregistered_user), (dialogInterface, i) -> dialogInterface.dismiss());
-                                    break;
-                                case 28002:
-                                    openAlertView("일치하는 사용자가 없습니다.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                    break;
-                                case 28003:
-                                    openAlertView("선글라스를 벗고 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                    break;
-                                case 28004:
-                                    openAlertView("마스크를 벗고 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                    break;
-                                case 28005:
-                                    openAlertView("눈을 뜨고 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                    break;
-                                case 28006:
-                                    openAlertView("가까이 다가와서 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                    break;
-                                case 28007:
-                                    openAlertView("정면에서 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                    break;
-                                case 28008:
-                                    openAlertView("카메라를 닦은 후 촬영해주세요.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                    break;
-                                default:
-                                    openAlertView("얼굴을 인식할 수 없습니다.", (dialogInterface, i) -> dialogInterface.dismiss());
-                                    break;
-                            }
-                        }
+                                    if (!response.isSuccessful()) {
+                                        openAlertView("얼굴을 인식할 수 없습니다.", (dialogInterface, i) -> {
+                                            isDetectFace(false);
+                                            dialogInterface.dismiss();
+                                        });
+                                        return;
+                                    }
 
-                        @Override
-                        public void onFailure(Call<JsonObject> call, Throwable t) {
-                            isProcessing = false;
-                            loadingDialog.dismiss();
-                            binding.faceAuthBtn.setEnabled(true);
+                                    JsonObject res = response.body();
+                                    int resCode = res.get("code").getAsInt();
+                                    if (resCode == 0) {
+                                        JsonObject resultVO = res.get("resultVO").getAsJsonObject();
+                                        String accessToken = resultVO.get(AppConfig.tokenAccessKey()).getAsString();
+                                        String refreshToken = resultVO.get(AppConfig.tokenRefreshKey()).getAsString();
 
-                            openAlertView(getString(R.string.login_fail_server_error), (dialogInterface, i) -> dialogInterface.dismiss());
+                                        Intent intent = new Intent(getBaseContext(), MainActivity.class);
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                        intent.putExtra(AppConfig.tokenAccessKey(), accessToken);
+                                        intent.putExtra(AppConfig.tokenRefreshKey(), refreshToken);
+                                        startActivity(intent);
+                                        finishAffinity();
+                                        return;
+                                    }
 
-                            Log.e(TAG, "Face authentication failed: " + t.getMessage(), t);
-                        }
-                    });
+                                    switch (resCode) {
+                                        case 28001:
+                                            openAlertView(getString(R.string.unregistered_user), (dialogInterface, i) -> {
+                                                isDetectFace(false);
+                                                dialogInterface.dismiss();
+                                            });
+                                            break;
+                                        case 28002:
+                                            openAlertView("일치하는 사용자가 없습니다.", (dialogInterface, i) -> {
+                                                isDetectFace(false);
+                                                dialogInterface.dismiss();
+                                            });
+                                            break;
+                                        case 28003:
+                                            openAlertView("선글라스를 벗고 촬영해주세요.", (dialogInterface, i) -> {
+                                                isDetectFace(false);
+                                                dialogInterface.dismiss();
+                                            });
+                                            break;
+                                        case 28004:
+                                            openAlertView("마스크를 벗고 촬영해주세요.", (dialogInterface, i) -> {
+                                                isDetectFace(false);
+                                                dialogInterface.dismiss();
+                                            });
+                                            break;
+                                        case 28005:
+                                            openAlertView("눈을 뜨고 촬영해주세요.", (dialogInterface, i) -> {
+                                                isDetectFace(false);
+                                                dialogInterface.dismiss();
+                                            });
+                                            break;
+                                        case 28006:
+                                            openAlertView("가까이 다가와서 촬영해주세요.", (dialogInterface, i) -> {
+                                                isDetectFace(false);
+                                                dialogInterface.dismiss();
+                                            });
+                                            break;
+                                        case 28007:
+                                            openAlertView("정면에서 촬영해주세요.", (dialogInterface, i) -> {
+                                                isDetectFace(false);
+                                                dialogInterface.dismiss();
+                                            });
+                                            break;
+                                        case 28008:
+                                            openAlertView("카메라를 닦은 후 촬영해주세요.", (dialogInterface, i) -> {
+                                                isDetectFace(false);
+                                                dialogInterface.dismiss();
+                                            });
+                                            break;
+                                        default:
+                                            openAlertView("얼굴을 인식할 수 없습니다.", (dialogInterface, i) -> {
+                                                isDetectFace(false);
+                                                dialogInterface.dismiss();
+                                            });
+                                            break;
+                                    }
+                                }
+
+                                @Override
+                                public void onFailure(Call<JsonObject> call, Throwable t) {
+                                    loadingDialog.dismiss();
+                                    binding.faceAuthBtn.setEnabled(true);
+
+                                    openAlertView(getString(R.string.login_fail_server_error), (dialogInterface, i) -> {
+                                        isDetectFace(false);
+                                        dialogInterface.dismiss();
+                                    });
+
+                                    Log.e(TAG, "Face authentication failed: " + t.getMessage(), t);
+                                }
+                            });
+                });
+            });
         });
     }
 
@@ -158,10 +205,9 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
      * 뷰 초기화
      */
     void initView() {
-        if (uFaceDetector == null) return;
-
-        uFaceDetector.resumeDetector();
-        binding.tvCameraText.setText(getString(R.string.camera_front));
+        this.result = null;
+        if (uFaceDetector != null)
+            uFaceDetector.resumeDetector();
     }
 
     // 얼굴 검출 UI 업데이트
@@ -169,8 +215,10 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
         if (isDetectFace) {
             binding.tvCameraText.setText(getString(R.string.camera_front));
             binding.ivGuide.setImageResource(R.drawable.face_guide_green);
+            binding.faceAuthBtn.setEnabled(true);
         } else {
             binding.ivGuide.setImageResource(R.drawable.face_guide_red);
+            binding.faceAuthBtn.setEnabled(false);
             initView();
         }
     }
@@ -183,40 +231,29 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     public void uFaceDetector(UFaceDetector detector, UFaceStateModel faceState) {
         switch (faceState.getState()) {
             case UFACE_STATE_FACE_DETECTED:
-                isDetectFace(true);
                 break;
 
             case UFACE_STATE_FACE_NOT_DETECTED:
                 isDetectFace(false);
-                this.result = null;
                 break;
 
             case UFACE_STATE_FACE_SMALL: // 얼굴이 너무 멀리 있을 때
-                Log.e(TAG, "UFACE STATE >> FACE SMALL");
                 binding.tvCameraText.setText(getString(R.string.face_too_far));
                 isDetectFace(false);
-                this.result = null;
                 break;
 
             case UFACE_STATE_FACE_LARGE: // 얼굴이 너무 가까이 있을 때
-                Log.e(TAG, "UFACE STATE >> FACE LARGE");
                 binding.tvCameraText.setText(getString(R.string.face_too_close));
                 isDetectFace(false);
-                this.result = null;
                 break;
 
             case UFACE_STATE_FACE_BLUR: // 블러 감지
-                Log.e(TAG, "UFACE STATE >> FACE BLUR");
                 binding.tvCameraText.setText(getString(R.string.face_unclear));
                 isDetectFace(false);
-                this.result = null;
                 break;
 
             default:
-                isDetectFace(false);
-                this.result = null;
                 break;
-
         }
     }
 
@@ -236,15 +273,16 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
                 break;
 
             default:
-                openAlertView("${error.errorDescription}(code : ${error.errorCode})");
+                openAlertView(String.format("%s(code: %s)", error.getErrorDescription(), error.getErrorCode()));
                 break;
         }
     }
 
     @Override
     public void uFaceDetector(UFaceDetector detector, UFaceResult result) {
-        if (!isProcessing)
-            this.result = result;
+        isDetectFace(true);
+        this.result = result;
+        detector.resumeDetector();
     }
 
     @Override
@@ -261,6 +299,7 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     protected void onStart() {
         super.onStart();
         initView();
+
     }
 
     @Override

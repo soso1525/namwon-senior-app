@@ -50,6 +50,7 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.LemonDemo"
+        android:forceDarkAllowed="false"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
         <activity

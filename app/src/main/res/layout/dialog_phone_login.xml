@@ -12,7 +12,7 @@
         android:id="@+id/ciImageView"
         android:layout_width="300dp"
         android:layout_height="20dp"
-        android:layout_marginTop="50dp"
+        android:layout_marginTop="30dp"
         android:src="@drawable/namwon_ci"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -51,10 +51,10 @@
         <EditText
             android:id="@+id/phoneEt"
             android:layout_width="300dp"
-            android:inputType="number"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:background="@drawable/et_border"
+            android:inputType="number"
             android:textSize="20dp" />
 
         <TextView
@@ -69,9 +69,9 @@
             android:id="@+id/passwordEt"
             android:layout_width="300dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:inputType="textPassword"
+            android:layout_marginTop="6dp"
             android:background="@drawable/et_border"
+            android:inputType="textPassword"
             android:textSize="20dp" />
 
         <Button
@@ -79,7 +79,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="30dp"
-            android:background="#e83736"
+            android:background="@drawable/btn_red"
             android:fontFamily="@font/pretendard_regular"
             android:text="@string/login_with_phone"
             android:textColor="@color/white"
@@ -90,10 +90,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:background="#f7f7f7"
+            android:background="@drawable/btn_grey"
             android:fontFamily="@font/pretendard_regular"
             android:text="@string/cancel"
-            android:textColor="#e83535" />
+            android:textColor="@color/red"
+            android:textStyle="bold" />
     </LinearLayout>
 
 

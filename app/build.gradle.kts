@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -23,14 +24,34 @@ android {
         )
         buildConfigField("String", "TOKEN_ACCESS_KEY", "\"bizportal-access-token\"")
         buildConfigField("String", "TOKEN_REFRESH_KEY", "\"bizportal-refresh-token\"")
-        buildConfigField("String", "BASE_URL", "\"https://ecare.namwon.go.kr/be/\"")
-        buildConfigField("String", "FRONT_URL", "\"https://ecare.namwon.go.kr/home/uaHome\"")
-//        buildConfigField("String", "BASE_URL", "\"https://docker.dhdx.kr/senioredudev/\"")
-//        buildConfigField("String", "FRONT_URL", "\"https://namwon-senior-web.netlify.app/home/uaHome/\"")
+    }
+
+    flavorDimensions += "env"
+
+    productFlavors {
+        create("local") {
+            dimension = "env"
+            buildConfigField("String", "BASE_URL", "\"http://192.168.0.15:9000/\"")
+            buildConfigField("String", "FRONT_URL", "\"https://namwon-senior-web.netlify.app/home/uaHome/\"")
+        }
+        create("pay") {
+            dimension = "env"
+            buildConfigField("String", "BASE_URL", "\"https://docker.dhdx.kr/senioredudev/\"")
+            buildConfigField("String", "FRONT_URL", "\"https://namwon-senior-web.netlify.app/home/uaHome/\"")
+        }
+        create("dev") {
+            dimension = "env"
+            buildConfigField("String", "BASE_URL", "\"https://docker.dhdx.kr/senioredudev/\"")
+            buildConfigField("String", "FRONT_URL", "\"https://docker.dhdx.kr/home/uaHome/\"")
+        }
+        create("prod") {
+            dimension = "env"
+            buildConfigField("String", "BASE_URL", "\"https://ecare.namwon.go.kr/be/\"")
+            buildConfigField("String", "FRONT_URL", "\"https://ecare.namwon.go.kr/home/uaHome/\"")
+        }
     }
 
     buildTypes {
-
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -39,6 +60,7 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
@@ -68,6 +90,8 @@ dependencies {
     implementation(files("libs/UFaceTotpClient1.0.0.aar"))
     implementation(files("libs/UFaceDetectorLemon1.0.3.aar"))
 
+    implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
+
     // WebKit
     implementation("androidx.webkit:webkit:1.10.0+")
 
@@ -82,6 +106,7 @@ dependencies {
 
     implementation("androidx.camera:camera-core:1.4.1")
     implementation("androidx.camera:camera-camera2:1.4.1")
+
     // If you want to additionally use the CameraX Lifecycle library
     implementation("androidx.camera:camera-lifecycle:1.4.1")
     // If you want to additionally use the CameraX View class
@@ -94,5 +119,7 @@ dependencies {
 
     // Tensorflow Lite
     implementation("com.google.ai.edge.litert:litert:1.4.0")
+
+
 
 }

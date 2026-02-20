@@ -124,7 +124,7 @@
             android:id="@+id/joinBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#389246"
+            android:background="@drawable/btn_red"
             android:fontFamily="@font/pretendard_regular"
             android:text="회원가입"
             android:textColor="@color/white" />
@@ -133,7 +133,7 @@
             android:id="@+id/faceAuthBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#e83736"
+            android:background="@drawable/btn_face_login"
             android:layout_marginTop="8dp"
             android:fontFamily="@font/pretendard_regular"
             android:text="@string/login_with_face"
@@ -145,9 +145,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:background="#f7f7f7"
+            android:background="@drawable/btn_grey"
             android:fontFamily="@font/pretendard_regular"
             android:text="@string/login_with_phone"
-            android:textColor="#e83535" />
+            android:textColor="@color/red" />
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
