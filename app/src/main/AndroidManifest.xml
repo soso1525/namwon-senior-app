@@ -67,7 +67,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="fullSensor" />
         <activity
-            android:name=".activity.RegisterActivity"
+            android:name=".activity.FaceRegisterActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize|stateHidden"
             android:screenOrientation="fullSensor" />

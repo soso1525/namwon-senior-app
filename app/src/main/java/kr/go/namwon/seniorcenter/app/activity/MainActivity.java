@@ -13,7 +13,6 @@ import android.os.Message;
 import android.provider.Settings;
 import android.util.Log;
 import android.webkit.ConsoleMessage;
-import android.webkit.GeolocationPermissions;
 import android.webkit.JsResult;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -28,14 +27,9 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
-import androidx.webkit.WebViewCompat;
-import androidx.webkit.WebViewFeature;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import kr.go.namwon.seniorcenter.app.AppConfig;
 import kr.go.namwon.seniorcenter.app.databinding.ActivityMainBinding;
@@ -61,6 +55,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     private String[] pendingMediaResources;
 
     private ActivityResultLauncher<String[]> permissionLauncher;
+    private ActivityResultLauncher<Intent> faceRegisterLauncher;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -69,6 +64,18 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        faceRegisterLauncher =
+                registerForActivityResult(
+                        new ActivityResultContracts.StartActivityForResult(),
+                        result -> {
+                            if (result.getResultCode() == RESULT_OK) {
+                                Intent data = result.getData();
+                                if (data != null && data.getBooleanExtra("refresh", false)) {
+                                    webView.reload();
+                                }
+                            }
+                        });
 
         accessToken = getIntent().getStringExtra(AppConfig.tokenAccessKey());
         refreshToken = getIntent().getStringExtra(AppConfig.tokenRefreshKey());
@@ -442,8 +449,8 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
     @Override
     public void registerFace() {
-        Intent intent = new Intent(this, RegisterActivity.class);
-        startActivity(intent);
+        Intent intent = new Intent(this, FaceRegisterActivity.class);
+        faceRegisterLauncher.launch(intent);
     }
 
     @Override

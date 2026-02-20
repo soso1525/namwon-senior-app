@@ -6,4 +6,13 @@
             <corners android:radius="6dp" />
         </shape>
     </item>
+
+    <!-- disabled -->
+    <item android:state_enabled="false">
+        <shape android:shape="rectangle">
+            <solid android:color="#A8A8A8"/>
+            <corners android:radius="6dp"/>
+        </shape>
+    </item>
+
 </selector>
