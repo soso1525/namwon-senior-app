@@ -3,20 +3,12 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-feature
-        android:name="android.hardware.camera"
-        android:required="false" />
-
-    <!-- 실제 카메라/마이크가 없는 기기에서는 설치 대상 제외(선택) -->
-    <uses-feature
-        android:name="android.hardware.camera.any"
-        android:required="false" />
+        android:name="android.hardware.camera.front"
+        android:required="true" />
     <uses-feature
         android:name="android.hardware.microphone"
-        android:required="false" />
+        android:required="true" />
 
-    <!-- (선택) Android 14+에서 서비스로 녹화/캡처할 때 -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.INTERNET" />
 

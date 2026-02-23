@@ -2,9 +2,13 @@ package kr.go.namwon.seniorcenter.app.activity;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
 
 import com.google.gson.JsonObject;
 import com.metsakuur.ufacedetector.UFaceDetector;
@@ -38,7 +42,6 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
     private LoginDialog loginDialog;
     private UFaceDetector uFaceDetector = null;
     private UFaceResult result = null;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -272,6 +275,16 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
 
             case "73001":
                 // 카메라 권한 거부 시 호출.
+                new AlertDialog.Builder(this)
+                        .setTitle("권한 필요")
+                        .setMessage("안면인식으로 인증하기 위해서는 카메라 권한이 필요합니다.\n설정에서 권한을 허용해주세요.")
+                        .setPositiveButton("설정 열기", (d, w) -> {
+                            Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            i.setData(Uri.fromParts("package", getPackageName(), null));
+                            startActivity(i);
+                        })
+                        .setNegativeButton("취소", null)
+                        .show();
                 break;
 
             default:

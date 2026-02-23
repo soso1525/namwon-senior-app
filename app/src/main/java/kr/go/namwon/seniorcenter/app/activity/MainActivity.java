@@ -28,14 +28,22 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 
+import com.google.firebase.messaging.FirebaseMessaging;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import kr.go.namwon.seniorcenter.app.AppConfig;
 import kr.go.namwon.seniorcenter.app.databinding.ActivityMainBinding;
+import kr.go.namwon.seniorcenter.app.retrofit.ApiClient;
 import kr.go.namwon.seniorcenter.app.util.JsBridge;
 import kr.go.namwon.seniorcenter.app.util.JsBridgeInterface;
 import kr.go.namwon.seniorcenter.app.util.PrefsHelper;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends BaseAppCompatActivity implements JsBridgeInterface {
 
@@ -82,11 +90,24 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
         PrefsHelper.putString(AppConfig.tokenAccessKey(), accessToken);
 
+        FirebaseMessaging.getInstance().getToken()
+                .addOnCompleteListener(task -> {
+                    if (!task.isSuccessful()) {
+                        Exception e = task.getException();
+                        Log.e("FCM", "Fetching FCM registration token failed", e);
+                        return;
+                    }
+
+                    String token = task.getResult();
+                    Log.e("FCM", "FCM Token: " + token);
+
+                    sendTokenToServer(token);
+                });
+
         initPermissionLauncher();
-        requestMicIfNeeded(); // 최초 일괄 점검
+        requestPermissions();
 
         webView = binding.webView;
-
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
@@ -353,11 +374,15 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         permissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestMultiplePermissions(),
                 result -> {
-                    // 일부 단말/경로에서 result map이 비어있을 수 있으므로, 최종 상태는 직접 재확인
                     boolean cam = has(Manifest.permission.CAMERA);
                     boolean mic = has(Manifest.permission.RECORD_AUDIO);
 
-                    // ★ 대기 중인 getUserMedia 처리
+                    boolean noti = true; // 33 미만은 항상 true 취급
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        noti = has(Manifest.permission.POST_NOTIFICATIONS);
+                    }
+
+                    // ★ 대기 중인 getUserMedia 처리 (기존 그대로)
                     if (pendingMediaPermissionRequest != null && pendingMediaResources != null) {
                         List<String> allow = new ArrayList<>();
                         for (String res : pendingMediaResources) {
@@ -368,18 +393,15 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                             }
                         }
 
-                        if (!allow.isEmpty()) {
-                            pendingMediaPermissionRequest.grant(allow.toArray(new String[0]));
-                        } else {
-                            pendingMediaPermissionRequest.deny();
-                        }
+                        if (!allow.isEmpty()) pendingMediaPermissionRequest.grant(allow.toArray(new String[0]));
+                        else pendingMediaPermissionRequest.deny();
 
                         pendingMediaPermissionRequest = null;
                         pendingMediaResources = null;
                     }
 
-                    // 안내 로그
-                    if (mic && cam) {
+                    // ✅ 최종 분기: cam+mic는 필수, noti는 정책에 따라
+                    if (mic && cam && noti) {
                         onPermissionsGranted();
                     } else {
                         onPermissionsDenied();
@@ -388,11 +410,19 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         );
     }
 
-    public void requestMicIfNeeded() {
+    public void requestPermissions() {
         List<String> need = new ArrayList<>();
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (!has(Manifest.permission.POST_NOTIFICATIONS)) {
+                need.add(Manifest.permission.POST_NOTIFICATIONS);
+            }
+        }
+
         for (String p : PERMS) {
             if (!has(p)) need.add(p);
         }
+
         if (!need.isEmpty()) {
             permissionLauncher.launch(need.toArray(new String[0]));
         } else {
@@ -401,13 +431,13 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     }
 
     private void onPermissionsGranted() {
-        Log.d(TAG, "카메라/마이크 권한 허용됨.");
+        Log.d(TAG, "알림/카메라/마이크 권한 허용됨.");
     }
 
     private void onPermissionsDenied() {
         new AlertDialog.Builder(this)
                 .setTitle("권한 필요")
-                .setMessage("서비스를 사용하려면 카메라, 마이크 권한이 필요합니다.\n설정에서 권한을 허용해주세요.")
+                .setMessage("서비스를 사용하려면 알림, 카메라, 마이크 권한이 필요합니다.\n설정에서 권한을 허용해주세요.")
                 .setPositiveButton("설정 열기", (d, w) -> {
                     Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                     i.setData(Uri.fromParts("package", getPackageName(), null));
@@ -425,6 +455,30 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         webView.evaluateJavascript(js, null);
     }
 
+    private void sendTokenToServer(String fcmToken) {
+        Map<String, String> body = new HashMap<>();
+        body.put("token", fcmToken);
+
+        ApiClient.memberApi()
+                .registerFcmToken(body)
+                .enqueue(new Callback<Integer>() {
+                    @Override
+                    public void onResponse(Call<Integer> call, Response<Integer> response) {
+
+                        if (response.isSuccessful()) {
+                            Log.e(TAG, "Register FCM token success.");
+                        } else {
+                            Log.e(TAG, "Register FCM token failed :: " + response.message());
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<Integer> call, Throwable t) {
+                        Log.e(TAG, "Register FCM token failed.", t);
+                    }
+                });
+    }
+
     @Override
     public void logout() {
         openAlertView("로그아웃 하시겠습니까?",
@@ -438,13 +492,37 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
                     webView.evaluateJavascript(js, null);
 
-                    Toast.makeText(this, "로그아웃 되었습니다.", Toast.LENGTH_SHORT).show();
+                    ApiClient.memberApi()
+                            .unregisterFcmToken()
+                            .enqueue(new Callback<Integer>() {
+                                @Override
+                                public void onResponse(Call<Integer> call, Response<Integer> response) {
 
-                    Intent intent = new Intent(this, LoginActivity.class);
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(intent);
-                    finishAffinity();
+                                    if (response.isSuccessful()) {
+                                        Log.e(TAG, "Unregister FCM token success.");
+                                    } else {
+                                        Log.e(TAG, "Unregister FCM token failed :: " + response.message());
+                                    }
+
+                                    goToLogin();
+                                }
+
+                                @Override
+                                public void onFailure(Call<Integer> call, Throwable t) {
+                                    Log.e(TAG, "Unregister FCM token failed.", t);
+                                    goToLogin();
+                                }
+                            });
                 });
+    }
+
+    private void goToLogin() {
+        Toast.makeText(MainActivity.this, "로그아웃 되었습니다.", Toast.LENGTH_SHORT).show();
+
+        Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finishAffinity();
     }
 
     @Override

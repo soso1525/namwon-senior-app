@@ -2,6 +2,8 @@ package kr.go.namwon.seniorcenter.app.retrofit;
 
 import com.google.gson.JsonObject;
 
+import java.util.Map;
+
 import kr.go.namwon.seniorcenter.app.model.CenterResponse;
 import kr.go.namwon.seniorcenter.app.model.SignUpRequest;
 import retrofit2.Call;
@@ -19,4 +21,11 @@ public interface MemberApi {
     @POST("v1/member/ext/signup")
     Call<JsonObject> join(@Body SignUpRequest signUpRequest);
 
+    @Headers("Content-Type: application/json")
+    @POST("v1/member/saveDvcToken")
+    Call<Integer> registerFcmToken(@Body Map<String, String> body);
+
+    @Headers("Content-Type: application/json")
+    @POST("v1/member/deleteDvcToken")
+    Call<Integer> unregisterFcmToken();
 }
