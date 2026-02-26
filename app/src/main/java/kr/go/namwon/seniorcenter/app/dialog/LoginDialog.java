@@ -114,7 +114,7 @@ public class LoginDialog extends Dialog {
                             if (response.isSuccessful()) {
                                 JsonObject res = response.body();
 
-                                if (res != null) {
+                                if (res != null && res.has(AppConfig.tokenAccessKey()) && res.has(AppConfig.tokenRefreshKey())) {
                                     String accessToken = res.get(AppConfig.tokenAccessKey()).getAsString();
                                     String refreshToken = res.get(AppConfig.tokenRefreshKey()).getAsString();
 
@@ -125,7 +125,8 @@ public class LoginDialog extends Dialog {
                                     getContext().startActivity(intent);
                                     dismiss();
                                 } else {
-                                    Log.e(TAG, "Response body is null");
+                                    Toast.makeText(getContext(), getContext().getString(R.string.login_fail_message), Toast.LENGTH_SHORT).show();
+                                    dismiss();
                                 }
                             } else {
                                 Toast.makeText(getContext(), getContext().getString(R.string.login_fail_message), Toast.LENGTH_SHORT).show();
