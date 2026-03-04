@@ -4,10 +4,17 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.media.AudioAttributes;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
 import android.provider.Settings;
@@ -25,6 +32,7 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 
@@ -38,6 +46,7 @@ import java.util.Map;
 import kr.go.namwon.seniorcenter.app.AppConfig;
 import kr.go.namwon.seniorcenter.app.databinding.ActivityMainBinding;
 import kr.go.namwon.seniorcenter.app.retrofit.ApiClient;
+import kr.go.namwon.seniorcenter.app.service.MyFirebaseMessagingService;
 import kr.go.namwon.seniorcenter.app.util.JsBridge;
 import kr.go.namwon.seniorcenter.app.util.JsBridgeInterface;
 import kr.go.namwon.seniorcenter.app.util.PrefsHelper;
@@ -52,6 +61,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     private WebView webView;
     private String accessToken;
     private String refreshToken;
+    private AlertDialog fcmDialog;
 
     private static final String[] PERMS = {
             Manifest.permission.RECORD_AUDIO,
@@ -544,6 +554,103 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finishAffinity();
+    }
+
+    private final BroadcastReceiver fcmReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            Log.e(TAG, "MainActivity fcm receiver received message");
+            deliverToWeb(
+                    intent.getStringExtra("title"),
+                    intent.getStringExtra("body"),
+                    intent.getStringExtra("link")
+            );
+        }
+    };
+
+    private void deliverToWeb(String title, String body, String link) {
+        if (webView == null)
+            return;
+
+        if (fcmDialog != null && fcmDialog.isShowing()) {
+            fcmDialog.setTitle(title == null ? "" : title);
+            fcmDialog.setMessage(body == null ? "" : body);
+            return;
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this)
+                .setTitle(title == null ? "" : title)
+                .setMessage(body == null ? "" : body)
+                .setCancelable(true)
+                .setNegativeButton("취소", (d, which) -> {
+                    d.dismiss();
+                })
+                .setPositiveButton("확인", (d, which) -> {
+                    d.dismiss();
+                    openLinkInWebView(link);
+                });
+
+        fcmDialog = builder.create();
+        fcmDialog.show();
+        playBeep();
+
+//        String js =
+//                "if (window.receiveFcmMessage) {" +
+//                        "  window.receiveFcmMessage(" +
+//                        org.json.JSONObject.quote(title) + "," +
+//                        org.json.JSONObject.quote(body)  + "," +
+//                        org.json.JSONObject.quote(link)  +
+//                        "  );" +
+//                        "}";
+//
+//        runOnUiThread(() -> webView.evaluateJavascript(js, null));
+    }
+
+    private void playBeep() {
+        try {
+            Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), sound);
+
+            if (android.os.Build.VERSION.SDK_INT >= 21) {
+                AudioAttributes attrs = new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)          // 핵심
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build();
+                r.setAudioAttributes(attrs);
+            }
+            r.play();
+        } catch (Exception e) {
+            Log.e(TAG, "beep failed", e);
+        }
+    }
+
+    private void openLinkInWebView(String link) {
+        if (webView == null) return;
+
+        if (link == null || link.trim().isEmpty()) {
+            Log.e(TAG, "link is empty");
+            return;
+        }
+
+        Log.e(TAG, "origin link: " + link);
+
+        String redirectLink = AppConfig.frontBaseURL() + link.replace("https://localhost:5173", "");
+
+        webView.loadUrl(redirectLink);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    @Override protected void onStart() {
+        super.onStart();
+        registerReceiver(
+                fcmReceiver,
+                new IntentFilter(MyFirebaseMessagingService.ACTION_FCM_TO_UI),
+                Context.RECEIVER_NOT_EXPORTED
+        );
+    }
+
+    @Override protected void onStop() {
+        super.onStop();
+        unregisterReceiver(fcmReceiver);
     }
 
     @Override

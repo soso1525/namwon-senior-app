@@ -17,6 +17,10 @@ public class AppConfig {
         return BuildConfig.FRONT_URL;
     }
 
+    public static String frontBaseURL() {
+        return BuildConfig.FRONT_BASE_URL;
+    }
+
     public static String tokenAccessKey() {
         return BuildConfig.TOKEN_ACCESS_KEY;
     }

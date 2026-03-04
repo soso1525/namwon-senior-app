@@ -33,21 +33,25 @@ android {
             dimension = "env"
             buildConfigField("String", "BASE_URL", "\"http://192.168.0.15:9000/\"")
             buildConfigField("String", "FRONT_URL", "\"https://namwon-senior-web.netlify.app/home/uaHome/\"")
+            buildConfigField("String", "FRONT_BASE_URL", "\"https://namwon-senior-web.netlify.app\"")
         }
         create("pay") {
             dimension = "env"
             buildConfigField("String", "BASE_URL", "\"https://docker.dhdx.kr/senioredudev/\"")
             buildConfigField("String", "FRONT_URL", "\"https://namwon-senior-web.netlify.app/home/uaHome/\"")
+            buildConfigField("String", "FRONT_BASE_URL", "\"https://namwon-senior-web.netlify.app\"")
         }
         create("dev") {
             dimension = "env"
             buildConfigField("String", "BASE_URL", "\"https://docker.dhdx.kr/senioredudev/\"")
             buildConfigField("String", "FRONT_URL", "\"https://docker.dhdx.kr/home/uaHome/\"")
+            buildConfigField("String", "FRONT_BASE_URL", "\"https://docker.dhdx.kr\"")
         }
         create("prod") {
             dimension = "env"
             buildConfigField("String", "BASE_URL", "\"https://ecare.namwon.go.kr/be/\"")
             buildConfigField("String", "FRONT_URL", "\"https://ecare.namwon.go.kr/home/uaHome/\"")
+            buildConfigField("String", "FRONT_BASE_URL", "\"https://ecare.namwon.go.kr\"")
         }
     }
 
