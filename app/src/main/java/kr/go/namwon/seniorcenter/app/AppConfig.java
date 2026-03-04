@@ -5,6 +5,9 @@ public class AppConfig {
     private AppConfig() {
     }
 
+    public static String version() { return BuildConfig.VERSION_NAME; }
+    public static boolean isProdFlavor() { return BuildConfig.FLAVOR.equals("prod"); }
+
     public static String licenseKey() {
         return BuildConfig.LICENSE_KEY;
     }

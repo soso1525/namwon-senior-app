@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import kr.go.namwon.seniorcenter.app.AppConfig;
+import kr.go.namwon.seniorcenter.app.BuildConfig;
 import kr.go.namwon.seniorcenter.app.R;
 import kr.go.namwon.seniorcenter.app.databinding.ActivityLoginBinding;
 import kr.go.namwon.seniorcenter.app.model.FaceVerifyRequest;
@@ -57,6 +58,12 @@ public class LoginActivity extends BaseAppCompatActivity implements UFaceDetecto
 
         initDetector();
 
+        String version = "v" + BuildConfig.VERSION_NAME;
+        if (!AppConfig.isProdFlavor()) {
+            version += " (dev)";
+        }
+
+        binding.versionTextView.setText(version);
         binding.joinBtn.setOnClickListener(view -> startActivity(new Intent(this, SignUpActivity.class)));
         binding.phoneAuthBtn.setOnClickListener(view -> loginDialog.show());
         binding.faceAuthBtn.setOnClickListener(view -> {
