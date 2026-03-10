@@ -50,6 +50,7 @@ import kr.go.namwon.seniorcenter.app.service.MyFirebaseMessagingService;
 import kr.go.namwon.seniorcenter.app.util.JsBridge;
 import kr.go.namwon.seniorcenter.app.util.JsBridgeInterface;
 import kr.go.namwon.seniorcenter.app.util.PrefsHelper;
+import kr.go.namwon.seniorcenter.app.util.Ringer;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -277,19 +278,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
                 return false;
             }
-
-            // (구형 단말용)
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                if (handleExternalUrl(view, url)) return true;
-
-                if (url.contains("https://www.barodoctor.com/")) {
-                    view.loadUrl(AppConfig.frontURL());
-                    return true;
-                }
-
-                return false;
-            }
         });
 
 
@@ -308,6 +296,15 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
         webView.loadUrl(AppConfig.frontURL());
         binding.swipeRefreshLayout.setOnRefreshListener(() -> webView.reload());
+        binding.swipeRefreshLayout.setOnChildScrollUpCallback((parent, child) -> {
+            String url = webView.getUrl();
+
+            if (shouldDisableRefresh(url)) {
+                return true;
+            }
+
+            return webView.canScrollVertically(-1);
+        });
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
@@ -320,6 +317,11 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                 }
             }
         });
+    }
+
+    private boolean shouldDisableRefresh(String url) {
+        if (url == null) return false;
+        return url.contains("/newConsent") || url.contains("/dgnsCheckList") || url.contains("/prescriptionConfirm");
     }
 
     private boolean handleExternalUrl(WebView view, String url) {
@@ -591,7 +593,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
         fcmDialog = builder.create();
         fcmDialog.show();
-        playBeep();
+        Ringer.playBeep(getApplicationContext());
 
 //        String js =
 //                "if (window.receiveFcmMessage) {" +
@@ -603,24 +605,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 //                        "}";
 //
 //        runOnUiThread(() -> webView.evaluateJavascript(js, null));
-    }
-
-    private void playBeep() {
-        try {
-            Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-            Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), sound);
-
-            if (android.os.Build.VERSION.SDK_INT >= 21) {
-                AudioAttributes attrs = new AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)          // 핵심
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build();
-                r.setAudioAttributes(attrs);
-            }
-            r.play();
-        } catch (Exception e) {
-            Log.e(TAG, "beep failed", e);
-        }
     }
 
     private void openLinkInWebView(String link) {
