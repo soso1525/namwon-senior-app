@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -17,6 +18,7 @@ import android.os.Message;
 import android.provider.Settings;
 import android.util.Log;
 import android.webkit.ConsoleMessage;
+import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -125,6 +127,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         webSettings.setSupportMultipleWindows(true);
 
         webView.addJavascriptInterface(new JsBridge(this, this), "AndroidBridge");
+        webView.addJavascriptInterface(new RouteBridge(), "AndroidRoute");
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onConsoleMessage(ConsoleMessage cm) {
@@ -172,7 +175,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                         return handleExternalUrl(view, url);
                     }
                 });
-
 
                 // 팝업 닫기(window.close) 처리
                 popupWebView.setWebChromeClient(new WebChromeClient() {
@@ -255,6 +257,15 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 binding.swipeRefreshLayout.setRefreshing(false);
+
+                injectRouteWatcher();
+                updateOrientationByUrl(url); // 최초 로드도 처리
+
+//                if (isConsentPage(url)) {
+//                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+//                } else {
+//                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_USER);
+//                }
             }
 
             @Override
@@ -294,7 +305,7 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         binding.swipeRefreshLayout.setOnChildScrollUpCallback((parent, child) -> {
             String url = webView.getUrl();
 
-            if (shouldDisableRefresh(url)) {
+            if (isConsentPage(url)) {
                 return true;
             }
 
@@ -314,9 +325,58 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         });
     }
 
-    private boolean shouldDisableRefresh(String url) {
+    private boolean isConsentPage(String url) {
         if (url == null) return false;
         return url.contains("/newConsent") || url.contains("/dgnsCheckList") || url.contains("/prescriptionConfirm");
+    }
+
+    private void injectRouteWatcher() {
+        String js =
+                "(function() {" +
+                        "  if (window.__routeHooked) return;" +
+                        "  window.__routeHooked = true;" +
+
+                        "  function notifyRoute() {" +
+                        "    if (window.AndroidRoute && window.AndroidRoute.onRouteChanged) {" +
+                        "      window.AndroidRoute.onRouteChanged(location.href);" +
+                        "    }" +
+                        "  }" +
+
+                        "  var pushState = history.pushState;" +
+                        "  history.pushState = function() {" +
+                        "    pushState.apply(history, arguments);" +
+                        "    notifyRoute();" +
+                        "  };" +
+
+                        "  var replaceState = history.replaceState;" +
+                        "  history.replaceState = function() {" +
+                        "    replaceState.apply(history, arguments);" +
+                        "    notifyRoute();" +
+                        "  };" +
+
+                        "  window.addEventListener('popstate', notifyRoute);" +
+                        "  notifyRoute();" +
+                        "})();";
+
+        webView.evaluateJavascript(js, null);
+    }
+
+    private void updateOrientationByUrl(String url) {
+        runOnUiThread(() -> {
+            if (url != null && isConsentPage(url)) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            } else {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_FULL_USER);
+            }
+        });
+    }
+
+    public class RouteBridge {
+        @JavascriptInterface
+        public void onRouteChanged(String url) {
+            Log.e(TAG, "route chagned: " + url);
+            runOnUiThread(() -> updateOrientationByUrl(url));
+        }
     }
 
     private boolean handleExternalUrl(WebView view, String url) {
