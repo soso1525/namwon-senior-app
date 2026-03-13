@@ -10,9 +10,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.media.AudioAttributes;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -62,7 +59,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     private WebView webView;
     private String accessToken;
     private String refreshToken;
-    private AlertDialog fcmDialog;
 
     private static final String[] PERMS = {
             Manifest.permission.RECORD_AUDIO,
@@ -279,7 +275,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                 return false;
             }
         });
-
 
 //        Set<String> allowedOriginRules = new HashSet<>();
 //        allowedOriginRules.add("https://namwon-senior-web.netlify.app");
@@ -573,53 +568,18 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
         if (webView == null)
             return;
 
-        if (fcmDialog != null && fcmDialog.isShowing()) {
-            fcmDialog.setTitle(title == null ? "" : title);
-            fcmDialog.setMessage(body == null ? "" : body);
-            return;
-        }
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this)
-                .setTitle(title == null ? "" : title)
-                .setMessage(body == null ? "" : body)
-                .setCancelable(true)
-                .setNegativeButton("취소", (d, which) -> {
-                    d.dismiss();
-                })
-                .setPositiveButton("확인", (d, which) -> {
-                    d.dismiss();
-                    openLinkInWebView(link);
-                });
-
-        fcmDialog = builder.create();
-        fcmDialog.show();
         Ringer.playBeep(getApplicationContext());
 
-//        String js =
-//                "if (window.receiveFcmMessage) {" +
-//                        "  window.receiveFcmMessage(" +
-//                        org.json.JSONObject.quote(title) + "," +
-//                        org.json.JSONObject.quote(body)  + "," +
-//                        org.json.JSONObject.quote(link)  +
-//                        "  );" +
-//                        "}";
-//
-//        runOnUiThread(() -> webView.evaluateJavascript(js, null));
-    }
+        String js =
+                "if (window.receiveFcmMessage) {" +
+                        "  window.receiveFcmMessage(" +
+                        org.json.JSONObject.quote(title) + "," +
+                        org.json.JSONObject.quote(body)  + "," +
+                        org.json.JSONObject.quote(link)  +
+                        "  );" +
+                        "}";
 
-    private void openLinkInWebView(String link) {
-        if (webView == null) return;
-
-        if (link == null || link.trim().isEmpty()) {
-            Log.e(TAG, "link is empty");
-            return;
-        }
-
-        Log.e(TAG, "origin link: " + link);
-
-        String redirectLink = AppConfig.frontBaseURL() + link.replace("https://localhost:5173", "");
-
-        webView.loadUrl(redirectLink);
+        runOnUiThread(() -> webView.evaluateJavascript(js, null));
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
