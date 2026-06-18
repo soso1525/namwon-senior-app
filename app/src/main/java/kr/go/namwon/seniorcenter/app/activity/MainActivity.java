@@ -31,7 +31,6 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 
@@ -460,7 +459,8 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                             }
                         }
 
-                        if (!allow.isEmpty()) pendingMediaPermissionRequest.grant(allow.toArray(new String[0]));
+                        if (!allow.isEmpty())
+                            pendingMediaPermissionRequest.grant(allow.toArray(new String[0]));
                         else pendingMediaPermissionRequest.deny();
 
                         pendingMediaPermissionRequest = null;
@@ -516,8 +516,8 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
 
     private void initToken() {
         String js = "localStorage.setItem('logintool', 'basic');"
-                + "localStorage.setItem('userJwt', '" + accessToken + "');"
-                + "localStorage.setItem('refreshJwt', '" + refreshToken + "');";
+                + "localStorage.setItem('userJwt', " + org.json.JSONObject.quote(accessToken) + ");"
+                + "localStorage.setItem('refreshJwt', " + org.json.JSONObject.quote(refreshToken) + ");";
 
         webView.evaluateJavascript(js, null);
     }
@@ -614,7 +614,8 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     }
 
     private final BroadcastReceiver fcmReceiver = new BroadcastReceiver() {
-        @Override public void onReceive(Context context, Intent intent) {
+        @Override
+        public void onReceive(Context context, Intent intent) {
             Log.e(TAG, "MainActivity fcm receiver received message");
             deliverToWeb(
                     intent.getStringExtra("title"),
@@ -634,25 +635,33 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
                 "if (window.receiveFcmMessage) {" +
                         "  window.receiveFcmMessage(" +
                         org.json.JSONObject.quote(title) + "," +
-                        org.json.JSONObject.quote(body)  + "," +
-                        org.json.JSONObject.quote(link)  +
+                        org.json.JSONObject.quote(body) + "," +
+                        org.json.JSONObject.quote(link) +
                         "  );" +
                         "}";
 
         runOnUiThread(() -> webView.evaluateJavascript(js, null));
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    @Override protected void onStart() {
+    @Override
+    protected void onStart() {
         super.onStart();
-        registerReceiver(
-                fcmReceiver,
-                new IntentFilter(MyFirebaseMessagingService.ACTION_FCM_TO_UI),
-                Context.RECEIVER_NOT_EXPORTED
-        );
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(
+                    fcmReceiver,
+                    new IntentFilter(MyFirebaseMessagingService.ACTION_FCM_TO_UI),
+                    Context.RECEIVER_NOT_EXPORTED
+            );
+        } else {
+            registerReceiver(
+                    fcmReceiver,
+                    new IntentFilter(MyFirebaseMessagingService.ACTION_FCM_TO_UI)
+            );
+        }
     }
 
-    @Override protected void onStop() {
+    @Override
+    protected void onStop() {
         super.onStop();
         unregisterReceiver(fcmReceiver);
     }
