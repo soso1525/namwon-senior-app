@@ -373,7 +373,6 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     public class RouteBridge {
         @JavascriptInterface
         public void onRouteChanged(String url) {
-            Log.e(TAG, "route chagned: " + url);
             runOnUiThread(() -> updateOrientationByUrl(url));
         }
     }
@@ -601,6 +600,15 @@ public class MainActivity extends BaseAppCompatActivity implements JsBridgeInter
     @Override
     public void tokenUpdated(String accessToken) {
         PrefsHelper.putString(AppConfig.tokenAccessKey(), accessToken);
+    }
+
+    @Override
+    public void reloadWebView() {
+        runOnUiThread(() -> {
+            if (webView != null) {
+                webView.reload();
+            }
+        });
     }
 
     @Override

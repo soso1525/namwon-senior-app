@@ -7,4 +7,6 @@ public interface JsBridgeInterface {
     void tokenUpdated(String accessToken);
 
     void tokenExpired();
+
+    void reloadWebView();
 }

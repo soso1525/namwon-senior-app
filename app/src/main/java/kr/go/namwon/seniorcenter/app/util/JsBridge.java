@@ -31,5 +31,10 @@ public class JsBridge {
     public void logout() {
         jsBridgeInterface.logout();
     }
+
+    @JavascriptInterface
+    public void reloadWebView() {
+        jsBridgeInterface.reloadWebView();
+    }
 }
 
